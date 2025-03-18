@@ -1,36 +1,24 @@
+# Project Elevate
+
 # Dependencies
-/node_modules
-/client/node_modules
-/.pnp
-.pnp.js
+node_modules/
 
-# Testing
-/coverage
-/client/coverage
-
-# Production
+# Build files
 /build
-/client/build
+/dist
 
-# Misc
-.DS_Store
+# Environment files
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
-.env*
 
-# Debug logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# Backup files
-backup_*.tar.gz 
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
