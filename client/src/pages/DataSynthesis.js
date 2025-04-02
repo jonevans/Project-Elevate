@@ -23,6 +23,10 @@ import {
   ListItemText,
   ListItemIcon,
   ListItemButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  CircularProgress,
 } from '@mui/material';
 import {
   Description,
@@ -68,12 +72,16 @@ const InfoCard = ({ title, icon, children }) => (
 function DataSynthesis() {
   const { customerName } = useParams();
   const [selectedAssets, setSelectedAssets] = useState(new Set());
-  const [synthesisResults, setSynthesisResults] = useState(null);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [expandedAnalysis, setExpandedAnalysis] = useState(null);
   const [viewingOutput, setViewingOutput] = useState(false);
-  const [completedAnalyses, setCompletedAnalyses] = useState([8]); // Starting with one completed for demo
+  const [completedAnalyses, setCompletedAnalyses] = useState([1, 2, 4, 6, 8, 10, 12, 14]); // 8 completed analyses for demo
+  const [analyzing, setAnalyzing] = useState(null);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [recentDocuments, setRecentDocuments] = useState([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [selectedTemplates, setSelectedTemplates] = useState([]);
   
   const analysisTypes = [
     { id: 1, name: "Gap Analysis", description: "Identify differences between current and desired states", completed: false },
@@ -128,6 +136,14 @@ function DataSynthesis() {
     },
   ]);
 
+  const templates = [
+    { id: 1, title: "Executive Summary", type: "word", description: "High-level overview of findings" },
+    { id: 2, title: "Technical Analysis", type: "word", description: "Detailed technical assessment" },
+    { id: 3, title: "Recommendations Report", type: "word", description: "Strategic recommendations" },
+    { id: 4, title: "Implementation Plan", type: "word", description: "Step-by-step implementation guide" },
+    { id: 5, title: "Stakeholder Presentation", type: "pdf", description: "Presentation for stakeholders" },
+  ];
+
   const handleToggleAsset = (assetId) => {
     const newSelected = new Set(selectedAssets);
     if (newSelected.has(assetId)) {
@@ -136,26 +152,6 @@ function DataSynthesis() {
       newSelected.add(assetId);
     }
     setSelectedAssets(newSelected);
-  };
-
-  const handleGenerateSynthesis = async () => {
-    setIsGenerating(true);
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Mock synthesis results
-    setSynthesisResults({
-      summary: `Based on the analysis of ${selectedAssets.size} selected documents, here are the key insights:
-
-The client's technical infrastructure shows significant opportunities for optimization, particularly in the areas of scalability and system integration. Current pain points include manual processes in the deployment pipeline and limited monitoring capabilities.
-
-Stakeholder interviews reveal a strong emphasis on improving development velocity while maintaining system reliability. The CTO has highlighted specific concerns about the current architecture's ability to handle projected growth over the next 18 months.
-
-Key recommendations will focus on implementing automated deployment processes, enhancing monitoring systems, and establishing a more robust scaling strategy aligned with business growth projections.`,
-      timestamp: new Date().toISOString(),
-    });
-    
-    setIsGenerating(false);
   };
 
   const toggleExpandAnalysis = (id) => {
@@ -178,6 +174,77 @@ Key recommendations will focus on implementing automated deployment processes, e
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
+  };
+
+  const handleAnalysisStart = async (analysisId) => {
+    setAnalyzing(analysisId);
+    setAnalysisProgress(0);
+    
+    // Simulate analysis progress
+    const interval = setInterval(() => {
+      setAnalysisProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            setAnalyzing(null);
+            setCompletedAnalyses(prev => [...prev, analysisId]);
+          }, 500);
+          return 100;
+        }
+        return prev + 10;
+      });
+    }, 500);
+  };
+
+  const handleCloseAnalysisModal = () => {
+    setAnalyzing(null);
+    setAnalysisProgress(0);
+  };
+
+  const handleTemplateSelect = (templateId) => {
+    setSelectedTemplates(prev => {
+      if (prev.some(t => t.id === templateId)) {
+        return prev.filter(t => t.id !== templateId);
+      } else {
+        const template = templates.find(t => t.id === templateId);
+        return [...prev, template];
+      }
+    });
+  };
+
+  const handleGenerateDocuments = async () => {
+    if (selectedTemplates.length === 0) return;
+    
+    setIsGenerating(true);
+    setGenerationProgress(0);
+    
+    // Simulate document generation progress
+    const interval = setInterval(() => {
+      setGenerationProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          // Create new documents
+          const newDocuments = selectedTemplates.map(template => ({
+            id: Date.now() + Math.random(),
+            name: template.title,
+            type: template.type,
+            date: new Date().toISOString(),
+            size: '2.5 MB',
+            status: 'Completed'
+          }));
+          
+          // Update recent documents
+          setRecentDocuments(prevDocs => [...newDocuments, ...prevDocs]);
+          
+          // Clear selection and reset generation state
+          setSelectedTemplates([]);
+          setIsGenerating(false);
+          
+          return 100;
+        }
+        return prev + 10;
+      });
+    }, 500);
   };
 
   return (
@@ -345,7 +412,11 @@ Key recommendations will focus on implementing automated deployment processes, e
                               sx={{
                                 color: completedAnalyses.includes(analysis.id) ? '#4caf50' : '#cc0000',
                                 backgroundColor: completedAnalyses.includes(analysis.id) ? 'rgba(76, 175, 80, 0.1)' : 'rgba(204, 0, 0, 0.1)',
+                                opacity: selectedAssets.size > 0 ? 1 : 0.5,
+                                cursor: selectedAssets.size > 0 ? 'pointer' : 'not-allowed',
                               }}
+                              onClick={() => selectedAssets.size > 0 && handleAnalysisStart(analysis.id)}
+                              disabled={selectedAssets.size === 0}
                             >
                               {completedAnalyses.includes(analysis.id) ? <Visibility /> : <PlayArrow />}
                             </IconButton>
@@ -408,46 +479,54 @@ Key recommendations will focus on implementing automated deployment processes, e
                 </Typography>
               </Box>
 
-              <Card sx={{ mb: 2 }}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <CheckCircle sx={{ color: '#4caf50', mr: 1 }} />
-                    <Typography variant="subtitle1">
-                      Impact Chain Reaction
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
-                      Completed 2 hours ago
-                    </Typography>
-                  </Box>
-                  <Typography variant="body2" color="text.secondary" paragraph>
-                    Analyzed how changes to monitoring systems would impact deployment processes, system reliability, and ultimately customer satisfaction.
-                  </Typography>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Created insight asset: Impact_Chain_Analysis.txt
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          setExpandedAnalysis(8);
-                          setViewingOutput(true);
-                        }}
-                        sx={{ color: '#cc0000' }}
-                      >
-                        View Results
-                      </Button>
-                      <Button
-                        size="small"
-                        startIcon={<Edit />}
-                        sx={{ color: '#cc0000' }}
-                      >
-                        Edit
-                      </Button>
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
+              <Grid container spacing={2}>
+                {analysisTypes
+                  .filter(analysis => completedAnalyses.includes(analysis.id))
+                  .map((analysis) => (
+                    <Grid item xs={12} key={analysis.id}>
+                      <Card>
+                        <CardContent>
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                            <CheckCircle sx={{ color: '#4caf50', mr: 1 }} />
+                            <Typography variant="subtitle1">
+                              {analysis.name}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+                              Completed {Math.floor(Math.random() * 24)} hours ago
+                            </Typography>
+                          </Box>
+                          <Typography variant="body2" color="text.secondary" paragraph>
+                            {analysis.description}
+                          </Typography>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="caption" color="text.secondary">
+                              Created insight asset: {analysis.name.replace(/\s+/g, '_')}_Analysis.txt
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              <Button
+                                size="small"
+                                onClick={() => {
+                                  setExpandedAnalysis(analysis.id);
+                                  setViewingOutput(true);
+                                }}
+                                sx={{ color: '#cc0000' }}
+                              >
+                                View Results
+                              </Button>
+                              <Button
+                                size="small"
+                                startIcon={<Edit />}
+                                sx={{ color: '#cc0000' }}
+                              >
+                                Edit
+                              </Button>
+                            </Box>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+              </Grid>
 
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
                 <Button
@@ -526,26 +605,36 @@ Key recommendations will focus on implementing automated deployment processes, e
         </Grid>
       </Box>
 
-      {/* Generate Button */}
-      {selectedAssets.size > 0 && !isGenerating && (
-        <Fab
-          variant="extended"
-          sx={{
-            position: 'fixed',
-            bottom: 32,
-            right: 32,
-            backgroundColor: '#cc0000',
-            color: 'white',
-            '&:hover': {
-              backgroundColor: '#aa0000',
-            },
-          }}
-          onClick={handleGenerateSynthesis}
-        >
-          <AddIcon sx={{ mr: 1 }} />
-          Generate Synthesis ({selectedAssets.size})
-        </Fab>
-      )}
+      {/* Analysis Progress Modal */}
+      <Dialog
+        open={analyzing !== null}
+        onClose={handleCloseAnalysisModal}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Running Analysis
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 3 }}>
+            <CircularProgress 
+              variant="determinate" 
+              value={analysisProgress} 
+              size={60}
+              sx={{ color: '#cc0000', mb: 2 }}
+            />
+            <Typography variant="h6" gutterBottom>
+              Processing Analysis
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Please wait while we analyze your data...
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+              {analysisProgress}% complete
+            </Typography>
+          </Box>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }

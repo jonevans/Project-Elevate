@@ -22,6 +22,9 @@ import {
   Checkbox,
   Fab,
   Fade,
+  Card,
+  CardContent,
+  CircularProgress,
 } from '@mui/material';
 import {
   Description,
@@ -32,6 +35,8 @@ import {
   Add as AddIcon,
   ChevronRight as ChevronRightIcon,
   CheckCircle as CheckCircleIcon,
+  PictureAsPdf,
+  FileCopy,
 } from '@mui/icons-material';
 import AssessmentNav from '../components/AssessmentNav';
 
@@ -42,9 +47,9 @@ function Deliverables() {
   const [contentModalOpen, setContentModalOpen] = useState(false);
   const [progress, setProgress] = useState(25);
   const [expandedSections, setExpandedSections] = useState({
-    onPremiseCompute: true,
-    networking: true,
-    softwareApplications: true
+    onPremiseCompute: false,
+    networking: false,
+    softwareApplications: false
   });
   const [executiveSummary, setExecutiveSummary] = useState("Bath Concepts operates with functional but aging IT infrastructure that presents several areas of concern. Key vulnerabilities include single points of failure in network equipment, inadequate security monitoring, and limited backup capabilities.");
   const [newRecommendation, setNewRecommendation] = useState({
@@ -59,6 +64,106 @@ function Deliverables() {
   });
   const [approvedItems, setApprovedItems] = useState([]);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [recentDocuments, setRecentDocuments] = useState([]);
+  const [reviewData, setReviewData] = useState({
+    executiveSummary: {
+      content: "Bath Concepts operates with functional but aging IT infrastructure that presents several areas of concern. Key vulnerabilities include single points of failure in network equipment, inadequate security monitoring, and limited backup capabilities."
+    },
+    onPremiseCompute: {
+      categories: [
+        {
+          name: "Hypervisor",
+          expanded: false,
+          items: [
+            {
+              name: "VMware vSphere 6.5",
+              status: "pending",
+              findings: [
+                "Running outdated version (6.5)",
+                "No high availability configured",
+                "Limited resource monitoring"
+              ],
+              recommendations: [
+                "Upgrade to vSphere 7.0 or newer",
+                "Implement vSphere HA",
+                "Deploy vRealize Operations for monitoring"
+              ]
+            }
+          ]
+        },
+        {
+          name: "Physical Servers",
+          expanded: false,
+          items: [
+            {
+              name: "Dell PowerEdge R740",
+              status: "pending",
+              findings: [
+                "Running Windows Server 2012 R2",
+                "No redundancy for power supplies",
+                "Limited memory capacity"
+              ],
+              recommendations: [
+                "Upgrade to Windows Server 2019",
+                "Add redundant power supplies",
+                "Expand memory to 256GB"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    networking: {
+      categories: [
+        {
+          name: "WAN",
+          expanded: false,
+          items: [
+            {
+              name: "Primary Internet Connection",
+              status: "pending",
+              findings: [
+                "100Mbps dedicated fiber",
+                "No backup connection",
+                "Limited bandwidth for cloud services"
+              ],
+              recommendations: [
+                "Upgrade to 1Gbps connection",
+                "Add secondary ISP",
+                "Implement SD-WAN solution"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    softwareApplications: {
+      categories: [
+        {
+          name: "ERP System",
+          expanded: false,
+          items: [
+            {
+              name: "SAP Business One",
+              status: "pending",
+              findings: [
+                "Version 9.2 (outdated)",
+                "No disaster recovery plan",
+                "Limited integration capabilities"
+              ],
+              recommendations: [
+                "Upgrade to latest version",
+                "Implement DR solution",
+                "Enable API integrations"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  });
 
   // Calculate total number of items that can be approved
   const getTotalApprovableItems = () => {
@@ -99,12 +204,15 @@ function Deliverables() {
     return approvedItems.includes(`${category}-${item}`);
   };
 
-  const handleTemplateSelect = (templateId, isSelected) => {
-    setSelectedTemplates(prev => 
-      isSelected 
-        ? [...prev, templateId]
-        : prev.filter(id => id !== templateId)
-    );
+  const handleTemplateSelect = (templateId) => {
+    setSelectedTemplates(prev => {
+      if (prev.some(t => t.id === templateId)) {
+        return prev.filter(t => t.id !== templateId);
+      } else {
+        const template = templates.find(t => t.id === templateId);
+        return [...prev, template];
+      }
+    });
   };
 
   const handleViewChange = (newView) => {
@@ -120,186 +228,110 @@ function Deliverables() {
 
   // Template data
   const templates = [
-      {
-        id: 1,
-      title: 'Full Assessment Report',
-      description: 'Comprehensive document with all findings and recommendations',
-      type: 'word',
-      icon: <Description />,
-      },
-      {
-        id: 2,
-      title: 'Validation Slides',
-      description: 'Executive presentation for stakeholder review',
-      type: 'powerpoint',
-      icon: <Slideshow />,
-    },
-      {
-        id: 3,
-      title: 'Executive Summary',
-      description: 'Concise overview of key findings and recommendations',
-      type: 'word',
-      icon: <Description />,
-    },
-      {
-        id: 4,
-      title: 'Recommendation Matrix',
-      description: 'Prioritized action items with implementation timeline',
-      type: 'diagram',
-    icon: <AccountTree />,
-    },
+    { id: 1, title: "Executive Summary", type: "word", description: "High-level overview of findings" },
+    { id: 2, title: "Technical Analysis", type: "word", description: "Detailed technical assessment" },
+    { id: 3, title: "Recommendations Report", type: "word", description: "Strategic recommendations" },
+    { id: 4, title: "Implementation Plan", type: "word", description: "Step-by-step implementation guide" },
+    { id: 5, title: "Stakeholder Presentation", type: "pdf", description: "Presentation for stakeholders" },
   ];
 
-  // Sample data for the review interface
-  const reviewData = {
-    executiveSummary: {
-      content: "Bath Concepts operates with functional but aging IT infrastructure that presents several areas of concern. Key vulnerabilities include single points of failure in network equipment, inadequate security monitoring, and limited backup capabilities."
-    },
-    onPremiseCompute: {
-      categories: [
-        {
-          name: "Hypervisor",
-          expanded: false,
-          items: []
-        },
-        {
-          name: "Physical Servers",
-          expanded: false,
-          items: []
-        },
-        {
-          name: "Physical Storage",
-          expanded: true,
-          items: [
-            {
-              name: "Dell EMC Storage",
-              status: "pending",
-              findings: [
-                "Unity 380 array at 75% capacity",
-                "Running 5.0.3 firmware (out of date)",
-                "No performance issues reported"
-              ],
-      recommendations: [
-                "Upgrade firmware to latest version",
-                "Plan capacity expansion in next 6 months"
-              ]
-            },
-            {
-              name: "Synology NAS",
-              status: "pending",
-              findings: [
-                "RS1221+ used for file shares",
-                "RAID5 configuration with 8x4TB drives",
-                "No backup configured"
-              ],
-              recommendations: [
-                "Implement backup solution for NAS data",
-                "Consider migration to RAID6 for better redundancy"
-              ]
-            }
-          ]
-        },
-        {
-          name: "Virtual Machines",
-          expanded: false,
-          items: []
-        },
-        {
-          name: "Sub Roles",
-          expanded: false,
-          items: []
-        }
-      ]
-    },
-    networking: {
-      categories: [
-        {
-          name: "WAN",
-          expanded: false,
-          items: []
-        },
-        {
-          name: "Remote Connectivity",
-          expanded: false,
-          items: []
-        },
-        {
-          name: "Security Appliances",
-          expanded: true,
-          items: [
-            {
-              name: "WatchGuard Firewall",
-              status: "approved",
-              findings: [
-                "Single WatchGuard T80 firewall",
-                "No secondary for HA",
-                "IPS only for low-priority"
-              ],
-              recommendations: [
-                "Replace with Cisco Meraki MX75",
-                "Include 24x7x4 coverage"
-              ]
-            }
-          ]
-        },
-        {
-          name: "Switches",
-          expanded: false,
-          items: []
-        }
-      ]
-    },
-    softwareApplications: {
-      categories: [
-        {
-          name: "ERP System",
-          expanded: false,
-          items: []
-        },
-        {
-          name: "Office 365",
-          expanded: false,
-          items: []
-        }
-      ]
-    }
-  };
-
-  const renderFindingsAndRecommendations = (item) => (
-    <Box sx={{ mt: 2 }}>
-      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-        Findings:
-      </Typography>
-      <Box component="ul" sx={{ pl: 3, mb: 2 }}>
-        {item.findings.map((finding, idx) => (
-          <Typography key={idx} component="li" variant="body2">
-            {finding}
-          </Typography>
-        ))}
-      </Box>
-      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-        Recommendations:
-      </Typography>
-      <Box component="ul" sx={{ pl: 3 }}>
-        {item.recommendations.map((recommendation, idx) => (
-          <Typography key={idx} component="li" variant="body2">
-            {recommendation}
+  const renderFindingsAndRecommendations = (item) => {
+    // Ensure item has the required properties
+    const findings = item.findings || [];
+    const recommendations = item.recommendations || [];
+    
+    return (
+      <Box sx={{ mt: 2 }}>
+        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+          Findings:
+        </Typography>
+        <Box component="ul" sx={{ pl: 3, mb: 2 }}>
+          {findings.map((finding, idx) => (
+            <Typography key={idx} component="li" variant="body2">
+              {finding}
             </Typography>
-        ))}
+          ))}
+        </Box>
+        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+          Recommendations:
+        </Typography>
+        <Box component="ul" sx={{ pl: 3 }}>
+          {recommendations.map((recommendation, idx) => (
+            <Typography key={idx} component="li" variant="body2">
+              {recommendation}
+            </Typography>
+          ))}
+        </Box>
+        {showAddForm.category === item.category && showAddForm.item === item.name ? (
+          renderAddRecommendationForm(item.category, item.name)
+        ) : (
+          <Button
+            startIcon={<AddIcon />}
+            size="small"
+            sx={{ 
+              color: '#cc0000',
+              mt: 2,
+              '&:hover': {
+                backgroundColor: 'rgba(204, 0, 0, 0.04)',
+              },
+            }}
+            onClick={() => handleAddRecommendation(item.category, item.name)}
+          >
+            Add Recommendation
+          </Button>
+        )}
       </Box>
-    </Box>
-  );
+    );
+  };
 
   const handleAddRecommendation = (category, item) => {
     setShowAddForm({
       category,
       item
     });
+    setNewRecommendation({
+      category,
+      item,
+      finding: '',
+      recommendation: ''
+    });
   };
 
   const handleSaveNewRecommendation = () => {
-    // Here you would typically make an API call to save the new recommendation
-    console.log('Saving new recommendation:', newRecommendation);
+    if (!newRecommendation.category || !newRecommendation.item || !newRecommendation.finding || !newRecommendation.recommendation) {
+      return;
+    }
+
+    setReviewData(prevData => {
+      // Create a deep copy of the previous data
+      const updatedData = JSON.parse(JSON.stringify(prevData));
+      
+      // Find the category section
+      const categorySection = updatedData[newRecommendation.category];
+      if (categorySection && categorySection.categories) {
+        // Find the specific category
+        const category = categorySection.categories.find(cat => 
+          cat.items.some(item => item.name === newRecommendation.item)
+        );
+        
+        if (category) {
+          // Update the specific item
+          category.items = category.items.map(item => {
+            if (item.name === newRecommendation.item) {
+              return {
+                ...item,
+                findings: [...(item.findings || []), newRecommendation.finding],
+                recommendations: [...(item.recommendations || []), newRecommendation.recommendation]
+              };
+            }
+            return item;
+          });
+        }
+      }
+      
+      return updatedData;
+    });
+
     // Reset form
     setNewRecommendation({
       category: '',
@@ -311,7 +343,10 @@ function Deliverables() {
       category: '',
       item: ''
     });
-    alert('New recommendation added successfully!');
+    setShowSaveSuccess(true);
+    setTimeout(() => {
+      setShowSaveSuccess(false);
+    }, 2000);
   };
 
   const renderAddRecommendationForm = (category, item) => (
@@ -325,10 +360,10 @@ function Deliverables() {
     >
       <Typography variant="subtitle2" color="text.secondary" gutterBottom>
         Add New Recommendation
-            </Typography>
+      </Typography>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <TextField
-                  fullWidth
+        <TextField
+          fullWidth
           label="Finding"
           multiline
           rows={2}
@@ -337,22 +372,22 @@ function Deliverables() {
             ...prev,
             finding: e.target.value
           }))}
-                  variant="outlined"
-                  size="small"
-                />
-              <TextField
-                fullWidth
+          variant="outlined"
+          size="small"
+        />
+        <TextField
+          fullWidth
           label="Recommendation"
-                multiline
+          multiline
           rows={2}
           value={newRecommendation.recommendation}
           onChange={(e) => setNewRecommendation(prev => ({
             ...prev,
             recommendation: e.target.value
           }))}
-                variant="outlined"
-                size="small"
-              />
+          variant="outlined"
+          size="small"
+        />
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
           <Button 
             variant="outlined" 
@@ -372,7 +407,7 @@ function Deliverables() {
           >
             Save
           </Button>
-          </Box>
+        </Box>
       </Box>
     </Paper>
   );
@@ -381,6 +416,10 @@ function Deliverables() {
     <Box sx={{ pl: 2 }}>
       {items.map((item, idx) => {
         const isApproved = isItemApproved(category.name, item.name);
+        const itemWithCategory = {
+          ...item,
+          category: category.name
+        };
         return (
           <Paper 
             key={idx} 
@@ -395,7 +434,7 @@ function Deliverables() {
               <Typography variant="subtitle1">{item.name}</Typography>
               <Chip 
                 label={isApproved ? "Approved" : "Approve"} 
-                  size="small"
+                size="small"
                 onClick={() => handleApprove(category.name, item.name)}
                 sx={{ 
                   bgcolor: isApproved ? '#4caf50' : '#cc0000',
@@ -405,32 +444,14 @@ function Deliverables() {
                     bgcolor: isApproved ? '#388e3c' : '#aa0000',
                   },
                 }}
-                />
-              </Box>
-            {renderFindingsAndRecommendations(item)}
-            {showAddForm.category === category.name && showAddForm.item === item.name ? (
-              renderAddRecommendationForm(category.name, item.name)
-            ) : (
-              <Button
-                startIcon={<AddIcon />}
-                size="small"
-                sx={{ 
-                  color: '#cc0000',
-                  mt: 2,
-                  '&:hover': {
-                    backgroundColor: 'rgba(204, 0, 0, 0.04)',
-                  },
-                }}
-                onClick={() => handleAddRecommendation(category.name, item.name)}
-              >
-                Add Recommendation
-              </Button>
-            )}
+              />
+            </Box>
+            {renderFindingsAndRecommendations(itemWithCategory)}
           </Paper>
         );
       })}
-          </Box>
-        );
+    </Box>
+  );
 
   const renderCategory = (category) => (
     <Box key={category.name} sx={{ mb: 2 }}>
@@ -640,6 +661,41 @@ function Deliverables() {
     </Box>
   );
 
+  const handleGenerateDocuments = async () => {
+    if (selectedTemplates.length === 0) return;
+    
+    setIsGenerating(true);
+    setGenerationProgress(0);
+    
+    // Simulate document generation progress
+    const interval = setInterval(() => {
+      setGenerationProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          // Create new documents
+          const newDocuments = selectedTemplates.map(template => ({
+            id: Date.now() + Math.random(),
+            name: template.title,
+            type: template.type,
+            date: new Date().toISOString(),
+            size: '2.5 MB',
+            status: 'Completed'
+          }));
+          
+          // Replace recent documents with only the newly generated ones
+          setRecentDocuments(newDocuments);
+          
+          // Clear selection and reset generation state
+          setSelectedTemplates([]);
+          setIsGenerating(false);
+          
+          return 100;
+        }
+        return prev + 10;
+      });
+    }, 500);
+  };
+
   const renderGenerationInterface = () => (
     <Box>
       <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -662,7 +718,7 @@ function Deliverables() {
         </Box>
         <Button
           variant="contained"
-          onClick={() => setContentModalOpen(true)}
+          onClick={handleGenerateDocuments}
           disabled={selectedTemplates.length === 0}
           sx={{
             backgroundColor: '#cc0000',
@@ -676,163 +732,136 @@ function Deliverables() {
         </Button>
       </Box>
 
-      {/* Client Branding Section */}
+      {/* Document Templates */}
       <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>Client Branding</Typography>
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center',
-          gap: 3,
-          p: 2,
-          border: '1px dashed',
-          borderColor: 'grey.300',
-          borderRadius: 1,
-          bgcolor: 'grey.50'
-        }}>
-          <Box sx={{ 
-            width: 120, 
-            height: 60, 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            border: '1px solid',
-            borderColor: 'grey.300',
-            borderRadius: 1,
-            bgcolor: 'white'
-          }}>
-            <Typography variant="body2" color="text.secondary">No logo</Typography>
-          </Box>
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              Upload client logo to include in deliverables
-            </Typography>
-            <Button 
-              variant="outlined" 
-              size="small"
-              sx={{ 
-                color: '#cc0000',
-                borderColor: '#cc0000',
-                '&:hover': {
-                  borderColor: '#aa0000',
-                  backgroundColor: 'rgba(204, 0, 0, 0.04)',
-                },
-              }}
-            >
-              Upload Logo
-            </Button>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-              Maximum dimensions: 512px width × 256px height
-            </Typography>
-          </Box>
-        </Box>
-      </Paper>
-
-      {/* Template Selection */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>Select Deliverable Types</Typography>
+        <Typography variant="h6" gutterBottom>Document Templates</Typography>
+        <Typography variant="body2" color="text.secondary" gutterBottom>
+          Select templates to generate documents
+        </Typography>
         <Grid container spacing={2}>
           {templates.map((template) => (
-            <Grid item xs={12} sm={6} key={template.id}>
-              <Paper
-            sx={{
-                  p: 2,
-                  cursor: 'pointer',
-                  border: selectedTemplates.includes(template.id) ? '2px solid #cc0000' : '1px solid grey',
+            <Grid item xs={12} sm={6} md={4} key={template.id}>
+              <Card
+                sx={{
+                  border: selectedTemplates.some(t => t.id === template.id) ? '2px solid #cc0000' : '1px solid #e0e0e0',
                   '&:hover': {
-                    boxShadow: 3,
+                    borderColor: '#cc0000',
                   },
                 }}
-                onClick={() => handleTemplateSelect(template.id, !selectedTemplates.includes(template.id))}
               >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <Checkbox
-                    checked={selectedTemplates.includes(template.id)}
-            sx={{
-                color: '#cc0000',
-                      '&.Mui-checked': {
-                color: '#cc0000',
-                },
-                    }}
-                  />
-                  {template.icon}
-                  <Typography variant="subtitle1" sx={{ ml: 1 }}>
-                    {template.title}
-                      </Typography>
-                </Box>
-                <Typography variant="body2" color="text.secondary">
-                  {template.description}
-                </Typography>
-              </Paper>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    {template.type === 'word' ? <Description /> : <PictureAsPdf />}
+                    <Typography variant="subtitle1" sx={{ ml: 1, flex: 1 }}>
+                      {template.title}
+                    </Typography>
+                    <Checkbox
+                      checked={selectedTemplates.some(t => t.id === template.id)}
+                      onChange={() => handleTemplateSelect(template.id)}
+                      sx={{
+                        color: '#cc0000',
+                        '&.Mui-checked': {
+                          color: '#cc0000',
+                        },
+                      }}
+                    />
+                  </Box>
+                  <Typography variant="body2" color="text.secondary">
+                    {template.description}
+                  </Typography>
+                </CardContent>
+              </Card>
             </Grid>
           ))}
         </Grid>
       </Paper>
 
-   
-
-      {/* Generation Queue */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>Ready to Generate</Typography>
-        <Stack spacing={2}>
-          {selectedTemplates.length > 0 ? (
-            templates
-              .filter(template => selectedTemplates.includes(template.id))
-              .map(template => (
-                <Paper key={template.id} sx={{ p: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Box sx={{ 
-                      p: 1, 
-                      bgcolor: 'primary.light', 
-                      borderRadius: 1,
-                      mr: 2,
-                    }}>
-                      {template.icon}
-                    </Box>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="subtitle1">{template.title}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {template.description}
-                      </Typography>
-                    </Box>
-                    <Button
-                      variant="contained"
-                      sx={{
-                        backgroundColor: '#cc0000',
-                        '&:hover': { backgroundColor: '#aa0000' },
-                      }}
-                    >
-                      Generate
-                    </Button>
-                  </Box>
-                </Paper>
-              ))
-          ) : (
-            <Paper sx={{ p: 3, textAlign: 'center' }}>
-              <Typography variant="body1" color="text.secondary">
-                Please Select A Deliverable To Generate
-              </Typography>
-            </Paper>
-          )}
-        </Stack>
-      </Paper>
-
       {/* Recently Generated Documents */}
       <Paper sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>Recently Generated Documents</Typography>
-        <Stack spacing={2}>
-          {false ? ( // Replace with actual condition when you have documents
-            // Add your recently generated documents here
-            null
-          ) : (
-            <Paper sx={{ p: 3, textAlign: 'center' }}>
-              <Typography variant="body1" color="text.secondary">
-                No Recently Generated Documents
-              </Typography>
-            </Paper>
-          )}
-        </Stack>
-      </Paper>
+        <Typography variant="body2" color="text.secondary" gutterBottom>
+          View and download your recently generated documents
+        </Typography>
+        {recentDocuments.length > 0 ? (
+          <Grid container spacing={2}>
+            {recentDocuments.map((doc) => (
+              <Grid item xs={12} sm={6} md={4} key={doc.id}>
+                <Card>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      {doc.type === 'word' ? <Description /> : <PictureAsPdf />}
+                      <Typography variant="subtitle1" sx={{ ml: 1, flex: 1 }}>
+                        {doc.name}
+                      </Typography>
+                      <Chip
+                        label={doc.status}
+                        size="small"
+                        sx={{
+                          backgroundColor: doc.status === 'Completed' ? 'rgba(76, 175, 80, 0.1)' : 'rgba(255, 152, 0, 0.1)',
+                          color: doc.status === 'Completed' ? '#4caf50' : '#ff9800',
+                        }}
+                      />
                     </Box>
+                    <Typography variant="body2" color="text.secondary" paragraph>
+                      Generated on {new Date(doc.date).toLocaleDateString()}
+                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="caption" color="text.secondary">
+                        {doc.size}
+                      </Typography>
+                      <Button
+                        size="small"
+                        startIcon={<FileCopy />}
+                        sx={{ color: '#cc0000' }}
+                      >
+                        Download
+                      </Button>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        ) : (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <Typography variant="body1" color="text.secondary">
+              No recently generated documents
+            </Typography>
+          </Box>
+        )}
+      </Paper>
+
+      {/* Generation Progress Modal */}
+      <Dialog
+        open={isGenerating}
+        onClose={() => {}}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Generating Documents
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 3 }}>
+            <CircularProgress 
+              variant="determinate" 
+              value={generationProgress} 
+              size={60}
+              sx={{ color: '#cc0000', mb: 2 }}
+            />
+            <Typography variant="h6" gutterBottom>
+              Processing {selectedTemplates.length} documents
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Please wait while we generate your documents...
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+              {generationProgress}% complete
+            </Typography>
+          </Box>
+        </DialogContent>
+      </Dialog>
+    </Box>
   );
 
   return (
