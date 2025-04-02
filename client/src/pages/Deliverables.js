@@ -5,624 +5,476 @@ import {
   Grid,
   Paper,
   Typography,
-  Card,
-  CardContent,
-  CardMedia,
-  CardActions,
-  IconButton,
   Button,
-  Chip,
+  TextField,
+  Divider,
+  Stepper,
+  Step,
+  StepLabel,
+  LinearProgress,
+  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Divider,
-  TextField,
-  Tooltip,
-  Collapse,
   Stack,
+  Chip,
   Checkbox,
-  Stepper,
-  Step,
-  StepLabel,
-  StepContent,
   Fab,
-  LinearProgress,
+  Fade,
 } from '@mui/material';
 import {
   Description,
   Slideshow,
   AccountTree,
-  Assignment,
   CloudDownload,
-  History,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  FileCopy as CloneIcon,
-  MoreVert as MoreVertIcon,
-  ExpandMore as ExpandMoreIcon,
-  ChevronRight as ChevronRightIcon,
   Close as CloseIcon,
   Add as AddIcon,
+  ChevronRight as ChevronRightIcon,
+  CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import AssessmentNav from '../components/AssessmentNav';
 
-// Template categories with their respective icons
-const templateCategories = [
-  {
-    id: 'word',
-    title: 'Microsoft Word Reports',
-    icon: <Description />,
-    templates: [
+function Deliverables() {
+  const { customerName } = useParams();
+  const [currentView, setCurrentView] = useState('review');
+  const [selectedTemplates, setSelectedTemplates] = useState([]);
+  const [contentModalOpen, setContentModalOpen] = useState(false);
+  const [progress, setProgress] = useState(25);
+  const [expandedSections, setExpandedSections] = useState({
+    onPremiseCompute: true,
+    networking: true,
+    softwareApplications: true
+  });
+  const [executiveSummary, setExecutiveSummary] = useState("Bath Concepts operates with functional but aging IT infrastructure that presents several areas of concern. Key vulnerabilities include single points of failure in network equipment, inadequate security monitoring, and limited backup capabilities.");
+  const [newRecommendation, setNewRecommendation] = useState({
+    category: '',
+    item: '',
+    finding: '',
+    recommendation: ''
+  });
+  const [showAddForm, setShowAddForm] = useState({
+    category: '',
+    item: ''
+  });
+  const [approvedItems, setApprovedItems] = useState([]);
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+
+  // Calculate total number of items that can be approved
+  const getTotalApprovableItems = () => {
+    let count = 0;
+    Object.values(reviewData).forEach(section => {
+      if (section.categories) {
+        section.categories.forEach(category => {
+          count += category.items.length;
+        });
+      }
+    });
+    return count;
+  };
+
+  // Calculate progress based on approved items
+  const calculateProgress = () => {
+    const totalItems = getTotalApprovableItems();
+    if (totalItems === 0) return 25;
+    const approvedCount = approvedItems.length;
+    const baseProgress = 25;
+    const additionalProgress = (approvedCount / totalItems) * 75;
+    return Math.min(baseProgress + additionalProgress, 100);
+  };
+
+  const handleApprove = (category, item) => {
+    const itemId = `${category}-${item}`;
+    setApprovedItems(prev => {
+      if (prev.includes(itemId)) {
+        return prev.filter(id => id !== itemId);
+      } else {
+        return [...prev, itemId];
+      }
+    });
+    setProgress(calculateProgress());
+  };
+
+  const isItemApproved = (category, item) => {
+    return approvedItems.includes(`${category}-${item}`);
+  };
+
+  const handleTemplateSelect = (templateId, isSelected) => {
+    setSelectedTemplates(prev => 
+      isSelected 
+        ? [...prev, templateId]
+        : prev.filter(id => id !== templateId)
+    );
+  };
+
+  const handleViewChange = (newView) => {
+    setCurrentView(newView);
+  };
+
+  const toggleSection = (section) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
+  // Template data
+  const templates = [
       {
         id: 1,
-        title: 'Assessment Executive Summary',
-        description: 'Professional template for executive-level findings and recommendations',
-        lastUpdated: '2024-03-20',
-        version: '2.1',
-        tags: ['executive', 'findings', 'recommendations'],
-        thumbnail: 'word_template1.png',
+      title: 'Full Assessment Report',
+      description: 'Comprehensive document with all findings and recommendations',
+      type: 'word',
+      icon: <Description />,
       },
       {
         id: 2,
-        title: 'Detailed Technical Analysis',
-        description: 'Comprehensive template for technical assessment documentation',
-        lastUpdated: '2024-03-18',
-        version: '1.3',
-        tags: ['technical', 'analysis', 'implementation'],
-        thumbnail: 'word_template2.png',
-      },
-      {
-        id: 5,
-        title: 'One-Page Executive Brief',
-        description: 'Concise summary template for C-level executives',
-        lastUpdated: '2024-03-16',
-        version: '1.5',
-        tags: ['executive', 'summary', 'brief'],
-        thumbnail: 'summary_template1.png',
-      },
-    ],
-  },
-  {
-    id: 'powerpoint',
-    title: 'PowerPoint Presentations',
-    icon: <Slideshow />,
-    templates: [
+      title: 'Validation Slides',
+      description: 'Executive presentation for stakeholder review',
+      type: 'powerpoint',
+      icon: <Slideshow />,
+    },
       {
         id: 3,
-        title: 'Stakeholder Presentation',
-        description: 'Executive-friendly presentation template for key findings',
-        lastUpdated: '2024-03-19',
-        version: '2.0',
-        tags: ['presentation', 'executive', 'findings'],
-        thumbnail: 'ppt_template1.png',
-      },
-    ],
-  },
-  {
-    id: 'diagrams',
-    title: 'Process Diagrams',
-    icon: <AccountTree />,
-    templates: [
+      title: 'Executive Summary',
+      description: 'Concise overview of key findings and recommendations',
+      type: 'word',
+      icon: <Description />,
+    },
       {
         id: 4,
-        title: 'Implementation Roadmap',
-        description: 'Visual template for project implementation planning',
-        lastUpdated: '2024-03-17',
-        version: '1.1',
-        tags: ['implementation', 'planning', 'visual'],
-        thumbnail: 'diagram_template1.png',
-      },
-    ],
-  },
-];
+      title: 'Recommendation Matrix',
+      description: 'Prioritized action items with implementation timeline',
+      type: 'diagram',
+    icon: <AccountTree />,
+    },
+  ];
 
-const InfoCard = ({ title, icon, children, collapsible = false }) => {
-  const [expanded, setExpanded] = useState(true);
+  // Sample data for the review interface
+  const reviewData = {
+    executiveSummary: {
+      content: "Bath Concepts operates with functional but aging IT infrastructure that presents several areas of concern. Key vulnerabilities include single points of failure in network equipment, inadequate security monitoring, and limited backup capabilities."
+    },
+    onPremiseCompute: {
+      categories: [
+        {
+          name: "Hypervisor",
+          expanded: false,
+          items: []
+        },
+        {
+          name: "Physical Servers",
+          expanded: false,
+          items: []
+        },
+        {
+          name: "Physical Storage",
+          expanded: true,
+          items: [
+            {
+              name: "Dell EMC Storage",
+              status: "pending",
+              findings: [
+                "Unity 380 array at 75% capacity",
+                "Running 5.0.3 firmware (out of date)",
+                "No performance issues reported"
+              ],
+      recommendations: [
+                "Upgrade firmware to latest version",
+                "Plan capacity expansion in next 6 months"
+              ]
+            },
+            {
+              name: "Synology NAS",
+              status: "pending",
+              findings: [
+                "RS1221+ used for file shares",
+                "RAID5 configuration with 8x4TB drives",
+                "No backup configured"
+              ],
+              recommendations: [
+                "Implement backup solution for NAS data",
+                "Consider migration to RAID6 for better redundancy"
+              ]
+            }
+          ]
+        },
+        {
+          name: "Virtual Machines",
+          expanded: false,
+          items: []
+        },
+        {
+          name: "Sub Roles",
+          expanded: false,
+          items: []
+        }
+      ]
+    },
+    networking: {
+      categories: [
+        {
+          name: "WAN",
+          expanded: false,
+          items: []
+        },
+        {
+          name: "Remote Connectivity",
+          expanded: false,
+          items: []
+        },
+        {
+          name: "Security Appliances",
+          expanded: true,
+          items: [
+            {
+              name: "WatchGuard Firewall",
+              status: "approved",
+              findings: [
+                "Single WatchGuard T80 firewall",
+                "No secondary for HA",
+                "IPS only for low-priority"
+              ],
+              recommendations: [
+                "Replace with Cisco Meraki MX75",
+                "Include 24x7x4 coverage"
+              ]
+            }
+          ]
+        },
+        {
+          name: "Switches",
+          expanded: false,
+          items: []
+        }
+      ]
+    },
+    softwareApplications: {
+      categories: [
+        {
+          name: "ERP System",
+          expanded: false,
+          items: []
+        },
+        {
+          name: "Office 365",
+          expanded: false,
+          items: []
+        }
+      ]
+    }
+  };
 
-  return (
-    <Paper sx={{ p: 3, height: 'auto' }}>
-      <Box 
-        sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          mb: expanded ? 2 : 0,
-          cursor: collapsible ? 'pointer' : 'default',
-        }}
-        onClick={() => collapsible && setExpanded(!expanded)}
-      >
-        {React.cloneElement(icon, { sx: { color: '#cc0000' } })}
-        <Typography variant="h6" sx={{ ml: 1, flex: 1 }}>
-          {title}
-        </Typography>
-        {collapsible && (
-          <IconButton 
-            size="small"
-            sx={{ 
-              transform: expanded ? 'rotate(90deg)' : 'none',
-              transition: 'transform 0.2s',
-            }}
-          >
-            <ChevronRightIcon />
-          </IconButton>
-        )}
+  const renderFindingsAndRecommendations = (item) => (
+    <Box sx={{ mt: 2 }}>
+      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+        Findings:
+      </Typography>
+      <Box component="ul" sx={{ pl: 3, mb: 2 }}>
+        {item.findings.map((finding, idx) => (
+          <Typography key={idx} component="li" variant="body2">
+            {finding}
+          </Typography>
+        ))}
       </Box>
-      <Collapse in={expanded}>
-        {expanded && (
-          <>
-            <Divider sx={{ mb: 2 }} />
-            {children}
-          </>
-        )}
-      </Collapse>
-    </Paper>
-  );
-};
-
-const TemplateCard = ({ template, selected, onSelect }) => {
-  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
-
-  return (
-    <>
-      <Card 
-        sx={{ 
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          border: selected ? '2px solid #cc0000' : 'none',
-          '&:hover': {
-            boxShadow: 3,
-            transform: 'translateY(-2px)',
-            transition: 'all 0.2s ease-in-out',
-          },
-        }}
-      >
-        <CardContent sx={{ p: 2, pb: 1, flex: 1, position: 'relative' }}>
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}>
-            <Box sx={{ flex: 1, minWidth: 0, pr: 7 }}>
-              <Typography variant="subtitle2" noWrap>
-                {template.title}
-              </Typography>
-              <Typography variant="caption" color="text.secondary" display="block">
-                v{template.version}
-              </Typography>
-            </Box>
-            <Box sx={{ position: 'absolute', top: 8, right: 8 }}>
-              <Checkbox
-                checked={selected}
-                onChange={(e) => onSelect(template.id, e.target.checked)}
-                sx={{
-                  color: '#cc0000',
-                  '&.Mui-checked': {
-                    color: '#cc0000',
-                  },
-                }}
-              />
-            </Box>
-          </Box>
-          <Box 
-            sx={{ 
-              display: 'flex', 
-              gap: 0.5, 
-              flexWrap: 'wrap',
-              mb: 1,
-              minHeight: '24px',
-              maxHeight: '24px',
-              overflow: 'hidden'
-            }}
-          >
-            {template.tags.slice(0, 2).map((tag) => (
-              <Chip
-                key={tag}
-                label={tag}
-                size="small"
-                sx={{ 
-                  height: '20px',
-                  backgroundColor: 'rgba(204, 0, 0, 0.08)',
-                  color: '#cc0000',
-                  '& .MuiChip-label': {
-                    px: 1,
-                    fontSize: '0.7rem',
-                  },
-                }}
-              />
-            ))}
-            {template.tags.length > 2 && (
-              <Typography variant="caption" color="text.secondary">
-                +{template.tags.length - 2}
-              </Typography>
-            )}
-          </Box>
-        </CardContent>
-        <CardActions sx={{ p: 1, pt: 0, justifyContent: 'flex-end' }}>
-          <Tooltip title="Preview">
-            <IconButton size="small" onClick={() => setPreviewOpen(true)}>
-              <Description sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Download Template">
-            <IconButton size="small">
-              <CloudDownload sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Tooltip>
-        </CardActions>
-      </Card>
-
-      {/* Preview Dialog */}
-      <Dialog
-        open={previewOpen}
-        onClose={() => setPreviewOpen(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Typography variant="h6">{template.title}</Typography>
-            <IconButton onClick={() => setPreviewOpen(false)}>
-              <CloseIcon />
-            </IconButton>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" gutterBottom>Description</Typography>
-            <Typography variant="body2" color="text.secondary">
-              {template.description}
+      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+        Recommendations:
+      </Typography>
+      <Box component="ul" sx={{ pl: 3 }}>
+        {item.recommendations.map((recommendation, idx) => (
+          <Typography key={idx} component="li" variant="body2">
+            {recommendation}
             </Typography>
-          </Box>
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" gutterBottom>Tags</Typography>
-            <Stack direction="row" spacing={1}>
-              {template.tags.map((tag) => (
-                <Chip
-                  key={tag}
-                  label={tag}
+        ))}
+      </Box>
+    </Box>
+  );
+
+  const handleAddRecommendation = (category, item) => {
+    setShowAddForm({
+      category,
+      item
+    });
+  };
+
+  const handleSaveNewRecommendation = () => {
+    // Here you would typically make an API call to save the new recommendation
+    console.log('Saving new recommendation:', newRecommendation);
+    // Reset form
+    setNewRecommendation({
+      category: '',
+      item: '',
+      finding: '',
+      recommendation: ''
+    });
+    setShowAddForm({
+      category: '',
+      item: ''
+    });
+    alert('New recommendation added successfully!');
+  };
+
+  const renderAddRecommendationForm = (category, item) => (
+    <Paper 
+      sx={{ 
+        p: 2, 
+        mt: 2,
+        border: '1px dashed #cc0000',
+        bgcolor: 'rgba(204, 0, 0, 0.02)'
+      }}
+    >
+      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+        Add New Recommendation
+            </Typography>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <TextField
+                  fullWidth
+          label="Finding"
+          multiline
+          rows={2}
+          value={newRecommendation.finding}
+          onChange={(e) => setNewRecommendation(prev => ({
+            ...prev,
+            finding: e.target.value
+          }))}
+                  variant="outlined"
                   size="small"
-                  sx={{ 
-                    backgroundColor: 'rgba(204, 0, 0, 0.08)',
-                    color: '#cc0000',
-                  }}
                 />
-              ))}
-            </Stack>
-          </Box>
-          <Box sx={{ height: 400, backgroundColor: 'grey.100', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Typography color="text.secondary">Template Preview</Typography>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPreviewOpen(false)} sx={{ color: 'text.secondary' }}>
-            Close
+              <TextField
+                fullWidth
+          label="Recommendation"
+                multiline
+          rows={2}
+          value={newRecommendation.recommendation}
+          onChange={(e) => setNewRecommendation(prev => ({
+            ...prev,
+            recommendation: e.target.value
+          }))}
+                variant="outlined"
+                size="small"
+              />
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+          <Button 
+            variant="outlined" 
+            size="small"
+            onClick={() => setShowAddForm({ category: '', item: '' })}
+          >
+            Cancel
           </Button>
           <Button 
-            variant="contained"
-            sx={{ 
+            variant="contained" 
+            size="small"
+            onClick={handleSaveNewRecommendation}
+            sx={{
               backgroundColor: '#cc0000',
               '&:hover': { backgroundColor: '#aa0000' },
             }}
           >
-            Use Template
+            Save
           </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Version History Dialog */}
-      <Dialog
-        open={versionHistoryOpen}
-        onClose={() => setVersionHistoryOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>
-          Version History
-          <Typography variant="subtitle2" color="text.secondary">
-            {template.title}
-          </Typography>
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ mt: 2 }}>
-            {/* Mock version history */}
-            {[
-              {
-                version: template.version,
-                date: template.lastUpdated,
-                author: 'John Doe',
-                changes: 'Updated executive summary section and added new recommendation templates',
-              },
-              {
-                version: '1.0',
-                date: '2024-03-10',
-                author: 'Jane Smith',
-                changes: 'Initial template creation',
-              },
-            ].map((version, index) => (
-              <Box key={version.version} sx={{ mb: 2 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="subtitle2">
-                    Version {version.version}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {version.date}
-                  </Typography>
-                </Box>
-                <Typography variant="body2" color="text.secondary">
-                  {version.changes}
-                </Typography>
-                <Typography variant="caption" display="block" color="text.secondary">
-                  By {version.author}
-                </Typography>
-                {index !== 1 && <Divider sx={{ mt: 2 }} />}
-              </Box>
-            ))}
           </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button 
-            onClick={() => setVersionHistoryOpen(false)}
-            sx={{ color: 'text.secondary' }}
-          >
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
+      </Box>
+    </Paper>
   );
-};
 
-const ContentGenerationModal = ({ open, onClose, selectedTemplates, templates }) => {
-  const [activeStep, setActiveStep] = useState(0);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedFiles, setGeneratedFiles] = useState([]);
-  const [generationProgress, setGenerationProgress] = useState(0);
-  
-  // Reset state when modal is opened
-  React.useEffect(() => {
-    if (open) {
-      setActiveStep(0);
-      setIsGenerating(false);
-      setGeneratedFiles([]);
-      setGenerationProgress(0);
-    }
-  }, [open]);
-
-  const handleNext = () => {
-    if (activeStep === selectedTemplates.length - 1) {
-      handleGenerateDocuments();
-    } else {
-      setActiveStep((prevStep) => prevStep + 1);
-    }
-  };
-
-  const handleBack = () => {
-    setActiveStep((prevStep) => prevStep - 1);
-  };
-
-  const getTemplateById = (id) => templates.find(t => t.id === id);
-
-  // Mock data that would come from previous steps
-  const mockPreviousStepData = {
-    onboarding: {
-      companyName: "Acme Corp",
-      industry: "Manufacturing",
-      mainChallenges: "Legacy system modernization, data security",
-      stakeholders: ["CTO", "IT Director", "Security Team"],
-      objectives: ["Improve system performance", "Enhance security measures"]
-    },
-    planning: {
-      interviewFindings: {
-        technical: "Current infrastructure requires significant updates",
-        business: "Operational inefficiencies due to manual processes",
-        security: "Multiple potential vulnerabilities identified"
-      },
-      recommendations: [
-        "Implement modern cloud architecture",
-        "Automate key business processes",
-        "Enhance security protocols"
-      ]
-    },
-    dataSynthesis: {
-      metrics: {
-        performance: "System response time: 3.5s (industry avg: 1.2s)",
-        security: "15 critical vulnerabilities identified",
-        efficiency: "40% of processes require manual intervention"
-      },
-      priorities: [
-        "Address critical security vulnerabilities",
-        "Modernize core infrastructure",
-        "Implement automation framework"
-      ]
-    }
-  };
-
-  const getTemplateContent = (template) => {
-    switch (template.id) {
-      case 1: // Assessment Executive Summary
-        return {
-          title: "Executive Summary Fields",
-          sections: [
-            {
-              label: "Background",
-              defaultValue: `${mockPreviousStepData.onboarding.companyName} is seeking to address challenges in ${mockPreviousStepData.onboarding.mainChallenges}.`,
-              type: "text"
-            },
-            {
-              label: "Key Findings",
-              defaultValue: Object.values(mockPreviousStepData.planning.interviewFindings).join("\n"),
-              type: "bullets"
-            },
-            {
-              label: "Recommendations",
-              defaultValue: mockPreviousStepData.planning.recommendations,
-              type: "bullets"
-            }
-          ]
-        };
-      case 2: // Detailed Technical Analysis
-        return {
-          title: "Technical Analysis Fields",
-          sections: [
-            {
-              label: "Current State Analysis",
-              defaultValue: mockPreviousStepData.dataSynthesis.metrics,
-              type: "metrics"
-            },
-            {
-              label: "Technical Findings",
-              defaultValue: mockPreviousStepData.planning.interviewFindings.technical,
-              type: "text"
-            },
-            {
-              label: "Implementation Recommendations",
-              defaultValue: mockPreviousStepData.planning.recommendations,
-              type: "bullets"
-            }
-          ]
-        };
-      case 3: // Stakeholder Presentation
-        return {
-          title: "Presentation Content",
-          sections: [
-            {
-              label: "Executive Overview",
-              defaultValue: mockPreviousStepData.planning.interviewFindings.business,
-              type: "text"
-            },
-            {
-              label: "Key Metrics",
-              defaultValue: mockPreviousStepData.dataSynthesis.metrics,
-              type: "metrics"
-            },
-            {
-              label: "Action Items",
-              defaultValue: mockPreviousStepData.dataSynthesis.priorities,
-              type: "bullets"
-            }
-          ]
-        };
-      // Add cases for other templates...
-      default:
-        return {
-          title: "Content Fields",
-          sections: [
-            {
-              label: "Content",
-              defaultValue: "",
-              type: "text"
-            }
-          ]
-        };
-    }
-  };
-
-  const renderContentField = (section) => {
-    switch (section.type) {
-      case "bullets":
+  const renderCategoryItems = (items, category) => (
+    <Box sx={{ pl: 2 }}>
+      {items.map((item, idx) => {
+        const isApproved = isItemApproved(category.name, item.name);
         return (
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle2" gutterBottom>
-              {section.label}
-            </Typography>
-            {Array.isArray(section.defaultValue) ? (
-              section.defaultValue.map((bullet, idx) => (
-                <TextField
-                  key={idx}
-                  fullWidth
-                  defaultValue={bullet}
-                  variant="outlined"
+          <Paper 
+            key={idx} 
+            sx={{ 
+              p: 2, 
+              mb: 2,
+              border: isApproved ? '1px solid #4caf50' : '1px solid #e0e0e0',
+              bgcolor: isApproved ? '#f1f8e9' : 'white'
+            }}
+          >
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Typography variant="subtitle1">{item.name}</Typography>
+              <Chip 
+                label={isApproved ? "Approved" : "Approve"} 
                   size="small"
-                  sx={{ mb: 1 }}
-                />
-              ))
-            ) : (
-              <TextField
-                fullWidth
-                multiline
-                rows={4}
-                defaultValue={section.defaultValue}
-                variant="outlined"
-                size="small"
-              />
-            )}
-          </Box>
-        );
-      case "metrics":
-        return (
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle2" gutterBottom>
-              {section.label}
-            </Typography>
-            {Object.entries(section.defaultValue).map(([key, value]) => (
-              <Box key={key} sx={{ mb: 1 }}>
-                <Typography variant="caption" color="text.secondary">
-                  {key.charAt(0).toUpperCase() + key.slice(1)}
-                </Typography>
-                <TextField
-                  fullWidth
-                  defaultValue={value}
-                  variant="outlined"
-                  size="small"
+                onClick={() => handleApprove(category.name, item.name)}
+                sx={{ 
+                  bgcolor: isApproved ? '#4caf50' : '#cc0000',
+                  color: 'white',
+                  cursor: 'pointer',
+                  '&:hover': {
+                    bgcolor: isApproved ? '#388e3c' : '#aa0000',
+                  },
+                }}
                 />
               </Box>
-            ))}
+            {renderFindingsAndRecommendations(item)}
+            {showAddForm.category === category.name && showAddForm.item === item.name ? (
+              renderAddRecommendationForm(category.name, item.name)
+            ) : (
+              <Button
+                startIcon={<AddIcon />}
+                size="small"
+                sx={{ 
+                  color: '#cc0000',
+                  mt: 2,
+                  '&:hover': {
+                    backgroundColor: 'rgba(204, 0, 0, 0.04)',
+                  },
+                }}
+                onClick={() => handleAddRecommendation(category.name, item.name)}
+              >
+                Add Recommendation
+              </Button>
+            )}
+          </Paper>
+        );
+      })}
           </Box>
         );
-      default:
-        return (
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle2" gutterBottom>
-              {section.label}
+
+  const renderCategory = (category) => (
+    <Box key={category.name} sx={{ mb: 2 }}>
+      <Typography variant="subtitle1" sx={{ mb: 1 }}>
+        {category.name}
             </Typography>
-            <TextField
-              fullWidth
-              multiline
-              rows={4}
-              defaultValue={section.defaultValue}
-              variant="outlined"
-              size="small"
-            />
+      {category.items.length > 0 ? (
+        renderCategoryItems(category.items, category)
+      ) : (
+        <Paper 
+          sx={{ 
+            p: 2, 
+            mb: 2,
+            border: '1px solid #e0e0e0',
+            bgcolor: 'white'
+          }}
+        >
+          <Typography variant="body2" color="text.secondary" align="center">
+            No Recommendations
+          </Typography>
+        </Paper>
+      )}
           </Box>
         );
-    }
+
+  const handleSaveSummary = () => {
+    // Here you would typically make an API call to save the summary
+    console.log('Saving executive summary:', executiveSummary);
+    // Show success animation
+    setShowSaveSuccess(true);
+    setTimeout(() => {
+      setShowSaveSuccess(false);
+    }, 2000); // Hide after 2 seconds
   };
 
-  const handleGenerateDocuments = async () => {
-    setIsGenerating(true);
-    setGeneratedFiles([]);
-    setGenerationProgress(0);
-
-    // Mock document generation with progress
-    const totalDocs = selectedTemplates.length;
-    for (let i = 0; i < totalDocs; i++) {
-      const template = getTemplateById(selectedTemplates[i]);
-      // Simulate document generation delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Create a mock file object
-      const fileName = `${mockPreviousStepData.onboarding.companyName.replace(/\s+/g, '_')}_${template.title.replace(/\s+/g, '_')}.${template.id === 3 ? 'pptx' : 'docx'}`;
-      const newFile = {
-        id: template.id,
-        name: fileName,
-        template: template.title,
-        url: '#', // This would be a real URL in production
-        type: template.id === 3 ? 'PowerPoint' : 'Word',
-        icon: template.id === 3 ? <Slideshow fontSize="small" /> : <Description fontSize="small" />,
-      };
-
-      setGeneratedFiles(prev => [...prev, newFile]);
-      setGenerationProgress(((i + 1) / totalDocs) * 100);
-    }
-
-    setIsGenerating(false);
-  };
-
-  const renderGenerationProgress = () => (
-    <Box sx={{ width: '100%', mt: 2 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-        <Box sx={{ flex: 1 }}>
+  const renderReviewInterface = () => (
+    <Box>
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h5">Review and Approve Recommendations</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ width: '200px' }}>
           <LinearProgress 
             variant="determinate" 
-            value={generationProgress} 
+              value={progress} 
             sx={{
               height: 8,
               borderRadius: 4,
@@ -633,263 +485,362 @@ const ContentGenerationModal = ({ open, onClose, selectedTemplates, templates })
             }}
           />
         </Box>
-        <Typography variant="body2" color="text.secondary" sx={{ ml: 2, minWidth: 45 }}>
-          {Math.round(generationProgress)}%
+          <Typography variant="body2" color="text.secondary">
+            {progress}% Complete
         </Typography>
-      </Box>
-      <Typography variant="body2" color="text.secondary" align="center">
-        Generating documents... Please wait
-      </Typography>
-    </Box>
-  );
-
-  const renderGeneratedFiles = () => (
-    <Box sx={{ mt: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        Generated Documents
-      </Typography>
-      <Paper variant="outlined" sx={{ p: 2 }}>
-        <Stack spacing={2}>
-          {generatedFiles.map((file) => (
-            <Box
-              key={file.id}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                p: 1,
-                borderRadius: 1,
-                '&:hover': {
-                  backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                },
-              }}
-            >
-              {file.icon}
-              <Box sx={{ ml: 2, flex: 1 }}>
-                <Typography variant="subtitle2">{file.name}</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {file.type} Document
-                </Typography>
-              </Box>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<CloudDownload />}
-                sx={{
-                  color: '#cc0000',
-                  borderColor: '#cc0000',
-                  '&:hover': {
-                    borderColor: '#aa0000',
-                    backgroundColor: 'rgba(204, 0, 0, 0.04)',
-                  },
-                }}
-                onClick={() => window.open(file.url, '_blank')}
-              >
-                Download
-              </Button>
-            </Box>
-          ))}
-        </Stack>
-      </Paper>
-      <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-        <Button
-          onClick={onClose}
-          variant="contained"
-          sx={{
-            backgroundColor: '#cc0000',
-            '&:hover': { backgroundColor: '#aa0000' },
-          }}
-        >
-          Close
-        </Button>
-      </Box>
-    </Box>
-  );
-
-  return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="md"
-      fullWidth
-      PaperProps={{
-        sx: { minHeight: '80vh' }
-      }}
-    >
-      <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Typography variant="h6">
-            {isGenerating || generatedFiles.length > 0 ? 'Document Generation' : 'Generate Content'}
-          </Typography>
-          {!(isGenerating || generatedFiles.length > 0) && (
-            <IconButton onClick={onClose}>
-              <CloseIcon />
-            </IconButton>
-          )}
-        </Box>
-      </DialogTitle>
-      <DialogContent>
-        {isGenerating ? (
-          renderGenerationProgress()
-        ) : generatedFiles.length > 0 ? (
-          renderGeneratedFiles()
-        ) : (
-          <Stepper 
-            activeStep={activeStep} 
-            orientation="vertical"
+          <Button 
+            variant="contained"
+            onClick={() => handleViewChange('generate')}
             sx={{
-              '& .MuiStepIcon-root': {
-                color: '#cc0000',
-                '& .MuiStepIcon-text': {
-                  fill: '#ffffff',
-                },
-              },
-              '& .MuiStepIcon-root.Mui-completed': {
-                color: '#cc0000',
-                '& .MuiStepIcon-text': {
-                  fill: '#ffffff',
-                },
-              },
-              '& .MuiStepConnector-line': {
-                borderColor: '#cc0000',
-              },
-              '& .Mui-active': {
-                '& .MuiStepIcon-root': {
-                  color: '#cc0000',
-                },
-                '& .MuiStepIcon-text': {
-                  fill: '#ffffff',
-                },
-              },
-              '& .MuiStepLabel-label.Mui-active': {
-                color: '#cc0000',
-              },
-              '& .MuiStepIcon-text': {
-                fill: '#ffffff',
+              backgroundColor: '#cc0000',
+              '&:hover': { backgroundColor: '#aa0000' },
+            }}
+          >
+            Continue to Generation
+          </Button>
+      </Box>
+    </Box>
+
+      {/* Executive Summary Section */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+          <Typography variant="h6">Executive Summary</Typography>
+        </Box>
+        <TextField
+          fullWidth
+          multiline
+          rows={4}
+          value={executiveSummary}
+          onChange={(e) => setExecutiveSummary(e.target.value)}
+          variant="outlined"
+        />
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 2 }}>
+          <Fade in={showSaveSuccess} timeout={500}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CheckCircleIcon sx={{ color: '#4caf50' }} />
+              <Typography variant="body2" color="success.main">
+                Saved
+      </Typography>
+            </Box>
+          </Fade>
+          <Button 
+            variant="contained"
+            onClick={handleSaveSummary}
+            sx={{
+              backgroundColor: '#cc0000',
+              '&:hover': { backgroundColor: '#aa0000' },
+            }}
+          >
+            Save Summary
+          </Button>
+        </Box>
+      </Paper>
+
+      {/* On-Premise Compute Section */}
+      <Paper sx={{ mb: 3, overflow: 'hidden' }}>
+        <Box 
+              sx={{
+            p: 2, 
+            bgcolor: 'grey.100', 
+                display: 'flex',
+            justifyContent: 'space-between',
+            cursor: 'pointer'
+          }}
+          onClick={() => toggleSection('onPremiseCompute')}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Typography variant="h6">On-Premise Compute</Typography>
+            <Chip 
+              label={`${reviewData.onPremiseCompute.categories.length} categories`} 
+              size="small" 
+              sx={{ ml: 2, bgcolor: 'grey.200' }}
+            />
+              </Box>
+          <IconButton>
+            <ChevronRightIcon sx={{ 
+              transform: expandedSections.onPremiseCompute ? 'rotate(90deg)' : 'none',
+              transition: 'transform 0.2s'
+            }} />
+          </IconButton>
+        </Box>
+        {expandedSections.onPremiseCompute && (
+          <Box sx={{ p: 2 }}>
+            {reviewData.onPremiseCompute.categories.map(renderCategory)}
+          </Box>
+        )}
+      </Paper>
+
+      {/* Networking Section */}
+      <Paper sx={{ mb: 3, overflow: 'hidden' }}>
+        <Box 
+          sx={{ 
+            p: 2, 
+            bgcolor: 'grey.100', 
+            display: 'flex', 
+            justifyContent: 'space-between',
+            cursor: 'pointer'
+          }}
+          onClick={() => toggleSection('networking')}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Typography variant="h6">Networking</Typography>
+            <Chip 
+              label={`${reviewData.networking.categories.length} categories`} 
+                size="small"
+              sx={{ ml: 2, bgcolor: 'grey.200' }}
+            />
+          </Box>
+          <IconButton>
+            <ChevronRightIcon sx={{ 
+              transform: expandedSections.networking ? 'rotate(90deg)' : 'none',
+              transition: 'transform 0.2s'
+            }} />
+          </IconButton>
+        </Box>
+        {expandedSections.networking && (
+          <Box sx={{ p: 2 }}>
+            {reviewData.networking.categories.map(renderCategory)}
+          </Box>
+        )}
+      </Paper>
+
+      {/* Software Applications Section */}
+      <Paper sx={{ mb: 3, overflow: 'hidden' }}>
+        <Box 
+                sx={{
+            p: 2, 
+            bgcolor: 'grey.100', 
+            display: 'flex', 
+            justifyContent: 'space-between',
+            cursor: 'pointer'
+          }}
+          onClick={() => toggleSection('softwareApplications')}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Typography variant="h6">Software Applications</Typography>
+            <Chip 
+              label={`${reviewData.softwareApplications.categories.length} applications`} 
+              size="small" 
+              sx={{ ml: 2, bgcolor: 'grey.200' }}
+            />
+            </Box>
+          <IconButton>
+            <ChevronRightIcon sx={{ 
+              transform: expandedSections.softwareApplications ? 'rotate(90deg)' : 'none',
+              transition: 'transform 0.2s'
+            }} />
+          </IconButton>
+        </Box>
+        {expandedSections.softwareApplications && (
+          <Box sx={{ p: 2 }}>
+            {reviewData.softwareApplications.categories.map(renderCategory)}
+          </Box>
+        )}
+      </Paper>
+    </Box>
+  );
+
+  const renderGenerationInterface = () => (
+    <Box>
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={() => handleViewChange('review')}
+            startIcon={<ChevronRightIcon sx={{ transform: 'rotate(180deg)' }} />}
+            sx={{
+              color: '#cc0000',
+              borderColor: '#cc0000',
+              '&:hover': {
+                borderColor: '#aa0000',
+                backgroundColor: 'rgba(204, 0, 0, 0.04)',
               },
             }}
           >
-            {selectedTemplates.map((templateId, index) => {
-              const template = getTemplateById(templateId);
-              const content = getTemplateContent(template);
-              return (
-                <Step key={template.id}>
-                  <StepLabel>
-                    <Typography variant="subtitle1">{template.title}</Typography>
-                  </StepLabel>
-                  <StepContent>
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="body2" color="text.secondary" paragraph>
-                        Review and enhance the pre-populated content for your {template.title.toLowerCase()}:
+            Back to Recommendations
+          </Button>
+        </Box>
+        <Button
+          variant="contained"
+          onClick={() => setContentModalOpen(true)}
+          disabled={selectedTemplates.length === 0}
+          sx={{
+            backgroundColor: '#cc0000',
+            '&:hover': { backgroundColor: '#aa0000' },
+            '&.Mui-disabled': {
+              backgroundColor: 'grey.300',
+            },
+          }}
+        >
+          Generate All Selected
+        </Button>
+      </Box>
+
+      {/* Client Branding Section */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>Client Branding</Typography>
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center',
+          gap: 3,
+          p: 2,
+          border: '1px dashed',
+          borderColor: 'grey.300',
+          borderRadius: 1,
+          bgcolor: 'grey.50'
+        }}>
+          <Box sx={{ 
+            width: 120, 
+            height: 60, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            border: '1px solid',
+            borderColor: 'grey.300',
+            borderRadius: 1,
+            bgcolor: 'white'
+          }}>
+            <Typography variant="body2" color="text.secondary">No logo</Typography>
+          </Box>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Upload client logo to include in deliverables
+            </Typography>
+            <Button 
+              variant="outlined" 
+              size="small"
+              sx={{ 
+                color: '#cc0000',
+                borderColor: '#cc0000',
+                '&:hover': {
+                  borderColor: '#aa0000',
+                  backgroundColor: 'rgba(204, 0, 0, 0.04)',
+                },
+              }}
+            >
+              Upload Logo
+            </Button>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+              Maximum dimensions: 512px width × 256px height
+            </Typography>
+          </Box>
+        </Box>
+      </Paper>
+
+      {/* Template Selection */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>Select Deliverable Types</Typography>
+        <Grid container spacing={2}>
+          {templates.map((template) => (
+            <Grid item xs={12} sm={6} key={template.id}>
+              <Paper
+            sx={{
+                  p: 2,
+                  cursor: 'pointer',
+                  border: selectedTemplates.includes(template.id) ? '2px solid #cc0000' : '1px solid grey',
+                  '&:hover': {
+                    boxShadow: 3,
+                  },
+                }}
+                onClick={() => handleTemplateSelect(template.id, !selectedTemplates.includes(template.id))}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <Checkbox
+                    checked={selectedTemplates.includes(template.id)}
+            sx={{
+                color: '#cc0000',
+                      '&.Mui-checked': {
+                color: '#cc0000',
+                },
+                    }}
+                  />
+                  {template.icon}
+                  <Typography variant="subtitle1" sx={{ ml: 1 }}>
+                    {template.title}
                       </Typography>
-                      
-                      {content.sections.map((section, idx) => (
-                        renderContentField(section)
-                      ))}
+                </Box>
+                <Typography variant="body2" color="text.secondary">
+                  {template.description}
+                </Typography>
+              </Paper>
+            </Grid>
+          ))}
+        </Grid>
+      </Paper>
 
-                      <Box sx={{ mt: 3 }}>
-                        <Button
-                          variant="contained"
-                          onClick={handleNext}
-                          sx={{
-                            mr: 1,
-                            backgroundColor: '#cc0000',
-                            '&:hover': { backgroundColor: '#aa0000' },
-                          }}
-                        >
-                          {index === selectedTemplates.length - 1 ? 'Generate Documents' : 'Continue'}
-                        </Button>
-                        {index > 0 && (
-                          <Button
-                            onClick={handleBack}
-                            sx={{ color: 'text.secondary' }}
-                          >
-                            Back
-                          </Button>
-                        )}
-                      </Box>
+   
+
+      {/* Generation Queue */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>Ready to Generate</Typography>
+        <Stack spacing={2}>
+          {selectedTemplates.length > 0 ? (
+            templates
+              .filter(template => selectedTemplates.includes(template.id))
+              .map(template => (
+                <Paper key={template.id} sx={{ p: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box sx={{ 
+                      p: 1, 
+                      bgcolor: 'primary.light', 
+                      borderRadius: 1,
+                      mr: 2,
+                    }}>
+                      {template.icon}
                     </Box>
-                  </StepContent>
-                </Step>
-              );
-            })}
-          </Stepper>
-        )}
-      </DialogContent>
-    </Dialog>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="subtitle1">{template.title}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {template.description}
+                      </Typography>
+                    </Box>
+                    <Button
+                      variant="contained"
+                      sx={{
+                        backgroundColor: '#cc0000',
+                        '&:hover': { backgroundColor: '#aa0000' },
+                      }}
+                    >
+                      Generate
+                    </Button>
+                  </Box>
+                </Paper>
+              ))
+          ) : (
+            <Paper sx={{ p: 3, textAlign: 'center' }}>
+              <Typography variant="body1" color="text.secondary">
+                Please Select A Deliverable To Generate
+              </Typography>
+            </Paper>
+          )}
+        </Stack>
+      </Paper>
+
+      {/* Recently Generated Documents */}
+      <Paper sx={{ p: 3 }}>
+        <Typography variant="h6" gutterBottom>Recently Generated Documents</Typography>
+        <Stack spacing={2}>
+          {false ? ( // Replace with actual condition when you have documents
+            // Add your recently generated documents here
+            null
+          ) : (
+            <Paper sx={{ p: 3, textAlign: 'center' }}>
+              <Typography variant="body1" color="text.secondary">
+                No Recently Generated Documents
+              </Typography>
+            </Paper>
+          )}
+        </Stack>
+      </Paper>
+                    </Box>
   );
-};
-
-function Deliverables() {
-  const { customerName } = useParams();
-  const [selectedTemplates, setSelectedTemplates] = useState([]);
-  const [contentModalOpen, setContentModalOpen] = useState(false);
-
-  const handleTemplateSelect = (templateId, isSelected) => {
-    setSelectedTemplates(prev => 
-      isSelected 
-        ? [...prev, templateId]
-        : prev.filter(id => id !== templateId)
-    );
-  };
-
-  // Flatten all templates into a single array for easier lookup
-  const allTemplates = templateCategories.reduce((acc, category) => 
-    [...acc, ...category.templates], []);
 
   return (
     <Box>
       <AssessmentNav customerName={customerName} />
       
       <Box sx={{ px: 4, pb: 4 }}>
-        <Grid container spacing={3}>
-          {/* Template Categories */}
-          {templateCategories.map((category) => (
-            <Grid item xs={12} key={category.id}>
-              <InfoCard title={category.title} icon={category.icon}>
-                <Grid container spacing={2}>
-                  {category.templates.map((template) => (
-                    <Grid item xs={12} sm={6} md={4} lg={3} key={template.id}>
-                      <TemplateCard 
-                        template={template}
-                        selected={selectedTemplates.includes(template.id)}
-                        onSelect={handleTemplateSelect}
-                      />
-                    </Grid>
-                  ))}
-                </Grid>
-              </InfoCard>
-            </Grid>
-          ))}
-        </Grid>
-
-        {/* Floating Action Button for Generate Content */}
-        {selectedTemplates.length > 0 && (
-          <Fab
-            variant="extended"
-            sx={{
-              position: 'fixed',
-              bottom: 32,
-              right: 32,
-              backgroundColor: '#cc0000',
-              color: 'white',
-              '&:hover': {
-                backgroundColor: '#aa0000',
-              },
-            }}
-            onClick={() => setContentModalOpen(true)}
-          >
-            <AddIcon sx={{ mr: 1 }} />
-            Generate Content ({selectedTemplates.length})
-          </Fab>
-        )}
-
-        {/* Content Generation Modal */}
-        <ContentGenerationModal
-          open={contentModalOpen}
-          onClose={() => setContentModalOpen(false)}
-          selectedTemplates={selectedTemplates}
-          templates={allTemplates}
-        />
+        {currentView === 'review' ? renderReviewInterface() : renderGenerationInterface()}
       </Box>
     </Box>
   );

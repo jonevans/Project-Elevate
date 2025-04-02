@@ -120,7 +120,7 @@ function AssessmentDashboard() {
     <Box>
       <AssessmentNav customerName={customerName} />
       
-      <Box sx={{ px: 4, pb: 4 }}>
+      <Box>
         <Grid container spacing={3}>
           {/* Company Information */}
           <Grid item xs={12}>

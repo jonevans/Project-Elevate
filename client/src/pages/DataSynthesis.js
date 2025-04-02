@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -15,6 +15,14 @@ import {
   IconButton,
   Stack,
   Tooltip,
+  Tabs,
+  Tab,
+  Collapse,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  ListItemButton,
 } from '@mui/material';
 import {
   Description,
@@ -24,8 +32,25 @@ import {
   ContentCopy as ContentCopyIcon,
   Refresh as RefreshIcon,
   Save as SaveIcon,
+  ChevronRight,
+  ExpandLess as ChevronUp,
+  ExpandMore as ChevronDown,
+  PlayArrow,
+  Visibility,
+  CheckCircle,
+  Edit,
+  Warning,
+  Info,
+  BarChart,
+  FileCopy,
 } from '@mui/icons-material';
 import AssessmentNav from '../components/AssessmentNav';
+import AutomatedInsights from '../components/data-synthesis/automated-insights/AutomatedInsights';
+import PatternMatcher from '../components/data-synthesis/pattern-matching/PatternMatcher';
+import RecommendationEngine from '../components/data-synthesis/recommendations/RecommendationEngine';
+import AnalysisTools from '../components/data-synthesis/analysis-tools/AnalysisTools';
+import SynthesisWorkspace from '../components/data-synthesis/workspace/SynthesisWorkspace';
+import ConversionMetrics from '../components/data-synthesis/conversion/ConversionMetrics';
 
 const InfoCard = ({ title, icon, children }) => (
   <Paper sx={{ p: 3, height: '100%' }}>
@@ -45,6 +70,27 @@ function DataSynthesis() {
   const [selectedAssets, setSelectedAssets] = useState(new Set());
   const [synthesisResults, setSynthesisResults] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [activeTab, setActiveTab] = useState(0);
+  const [expandedAnalysis, setExpandedAnalysis] = useState(null);
+  const [viewingOutput, setViewingOutput] = useState(false);
+  const [completedAnalyses, setCompletedAnalyses] = useState([8]); // Starting with one completed for demo
+  
+  const analysisTypes = [
+    { id: 1, name: "Gap Analysis", description: "Identify differences between current and desired states", completed: false },
+    { id: 2, name: "Cause & Effect Analysis", description: "Examine how issues impact outcomes across systems", completed: false },
+    { id: 3, name: "Cross-Domain Connections", description: "Find relationships between different business areas", completed: false },
+    { id: 4, name: "Dependency Mapping", description: "Map interconnections between systems and processes", completed: false },
+    { id: 5, name: "Contradiction Exploration", description: "Highlight misalignments between expectations and reality", completed: false },
+    { id: 6, name: "Hidden Opportunity", description: "Uncover potential improvements that might be overlooked", completed: false },
+    { id: 7, name: "Root Cause Analysis", description: "Find underlying issues behind symptoms", completed: false },
+    { id: 8, name: "Impact Chain Reaction", description: "Project how changes might ripple through the organization", completed: true },
+    { id: 9, name: "Stakeholder Influence", description: "Analyze how stakeholders affect outcomes", completed: false },
+    { id: 10, name: "Historical Patterns", description: "Compare current situations to past successes", completed: false },
+    { id: 11, name: "Strategic Alignment", description: "Ensure recommendations support business objectives", completed: false },
+    { id: 12, name: "Trend Analysis", description: "Identify patterns across systems and time", completed: false },
+    { id: 13, name: "Risk Assessment", description: "Evaluate potential vulnerabilities and impacts", completed: false },
+    { id: 14, name: "Comparative Analysis", description: "Benchmark against industry standards and peers", completed: false },
+  ];
   
   // Mock data - replace with actual data from your backend
   const [assets] = useState([
@@ -112,18 +158,9 @@ Key recommendations will focus on implementing automated deployment processes, e
     setIsGenerating(false);
   };
 
-  const handleCopySynthesis = () => {
-    if (synthesisResults) {
-      navigator.clipboard.writeText(synthesisResults.summary);
-    }
-  };
-
-  const handleSaveAsAsset = () => {
-    if (synthesisResults) {
-      // Here you would typically make an API call to save the synthesis
-      // For now, we'll just log it
-      console.log('Saving synthesis as asset:', synthesisResults);
-    }
+  const toggleExpandAnalysis = (id) => {
+    setExpandedAnalysis(expandedAnalysis === id ? null : id);
+    setViewingOutput(false);
   };
 
   const getFileIcon = (type) => {
@@ -139,6 +176,10 @@ Key recommendations will focus on implementing automated deployment processes, e
     }
   };
 
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
+
   return (
     <Box>
       <AssessmentNav customerName={customerName} />
@@ -146,7 +187,7 @@ Key recommendations will focus on implementing automated deployment processes, e
         <Grid container spacing={3}>
           {/* Asset Selection */}
           <Grid item xs={12}>
-            <InfoCard title="Select Assets for Synthesis" icon={<Description />}>
+            <InfoCard title="Selected Assets for Analysis" icon={<Description />}>
               <Grid container spacing={2}>
                 {assets.map((asset) => (
                   <Grid item xs={12} sm={6} md={4} lg={3} key={asset.id}>
@@ -242,56 +283,246 @@ Key recommendations will focus on implementing automated deployment processes, e
                   </Grid>
                 ))}
               </Grid>
+              <Button
+                component={Link}
+                to={`/assessments/${customerName}/planning`}
+                startIcon={<AddIcon />}
+                sx={{ mt: 2, color: '#cc0000' }}
+              >
+                Add more assets
+              </Button>
             </InfoCard>
           </Grid>
 
-          {/* Synthesis Results */}
-          {synthesisResults && (
-            <Grid item xs={12}>
-              <InfoCard title="Synthesis Results" icon={<Description />}>
-                <Box sx={{ position: 'relative' }}>
-                  <Stack direction="row" spacing={1} sx={{ position: 'absolute', top: 0, right: 0 }}>
-                    <Tooltip title="Copy to clipboard">
-                      <IconButton 
-                        onClick={handleCopySynthesis}
-                        sx={{ 
-                          color: '#cc0000',
-                          '&:hover': { backgroundColor: 'rgba(204, 0, 0, 0.04)' }
-                        }}
-                      >
-                        <ContentCopyIcon />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Regenerate synthesis">
-                      <IconButton 
-                        onClick={handleGenerateSynthesis}
-                        sx={{ 
-                          color: '#cc0000',
-                          '&:hover': { backgroundColor: 'rgba(204, 0, 0, 0.04)' }
-                        }}
-                      >
-                        <RefreshIcon />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Save as asset">
-                      <IconButton 
-                        onClick={handleSaveAsAsset}
-                        sx={{ 
-                          color: '#cc0000',
-                          '&:hover': { backgroundColor: 'rgba(204, 0, 0, 0.04)' }
-                        }}
-                      >
-                        <SaveIcon />
-                      </IconButton>
-                    </Tooltip>
-                  </Stack>
-                  <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', mt: 2 }}>
-                    {synthesisResults.summary}
+          {/* Analysis Types */}
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2 }}>
+              <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Analysis Types
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Select analysis type to run against your assets
+                </Typography>
+              </Box>
+              
+              <Grid container spacing={2}>
+                {analysisTypes.map((analysis) => (
+                  <Grid item xs={12} md={6} key={analysis.id}>
+                    <Card
+                      sx={{
+                        border: completedAnalyses.includes(analysis.id) ? '1px solid #4caf50' : '1px solid #e0e0e0',
+                        '&:hover': {
+                          borderColor: '#cc0000',
+                        },
+                      }}
+                    >
+                      <CardContent sx={{ p: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center' }}>
+                              {completedAnalyses.includes(analysis.id) && (
+                                <CheckCircle sx={{ color: '#4caf50', mr: 1 }} />
+                              )}
+                              {analysis.name}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {analysis.description}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            {completedAnalyses.includes(analysis.id) && (
+                              <IconButton
+                                size="small"
+                                onClick={() => toggleExpandAnalysis(analysis.id)}
+                                sx={{ color: '#cc0000' }}
+                              >
+                                {expandedAnalysis === analysis.id ? <ChevronUp /> : <ChevronDown />}
+                              </IconButton>
+                            )}
+                            <IconButton
+                              size="small"
+                              sx={{
+                                color: completedAnalyses.includes(analysis.id) ? '#4caf50' : '#cc0000',
+                                backgroundColor: completedAnalyses.includes(analysis.id) ? 'rgba(76, 175, 80, 0.1)' : 'rgba(204, 0, 0, 0.1)',
+                              }}
+                            >
+                              {completedAnalyses.includes(analysis.id) ? <Visibility /> : <PlayArrow />}
+                            </IconButton>
+                          </Box>
+                        </Box>
+
+                        <Collapse in={expandedAnalysis === analysis.id && completedAnalyses.includes(analysis.id)}>
+                          <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                            <Typography variant="subtitle2" gutterBottom>
+                              Analysis Results
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" paragraph>
+                              Analysis completed on March 27, 2025. 3 key findings and 3 preliminary recommendations identified.
+                            </Typography>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="caption" color="text.secondary">
+                                Created insight asset: Impact_Chain_Analysis.txt
+                              </Typography>
+                              <Box sx={{ display: 'flex', gap: 1 }}>
+                                <Button
+                                  size="small"
+                                  onClick={() => setViewingOutput(true)}
+                                  sx={{ color: '#cc0000' }}
+                                >
+                                  View Full Results
+                                </Button>
+                                <Button
+                                  size="small"
+                                  startIcon={<Edit />}
+                                  sx={{ color: '#cc0000' }}
+                                >
+                                  Edit
+                                </Button>
+                              </Box>
+                            </Box>
+                          </Box>
+                        </Collapse>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </Paper>
+          </Grid>
+
+          {/* Completed Analyses Summary */}
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2 }}>
+              <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                  <Typography variant="h6" gutterBottom>
+                    Completed Analyses
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Summary of completed analyses and their insights
                   </Typography>
                 </Box>
-              </InfoCard>
-            </Grid>
-          )}
+                <Typography variant="body2" color="text.secondary">
+                  {completedAnalyses.length} of {analysisTypes.length} completed
+                </Typography>
+              </Box>
+
+              <Card sx={{ mb: 2 }}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <CheckCircle sx={{ color: '#4caf50', mr: 1 }} />
+                    <Typography variant="subtitle1">
+                      Impact Chain Reaction
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+                      Completed 2 hours ago
+                    </Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" paragraph>
+                    Analyzed how changes to monitoring systems would impact deployment processes, system reliability, and ultimately customer satisfaction.
+                  </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Created insight asset: Impact_Chain_Analysis.txt
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          setExpandedAnalysis(8);
+                          setViewingOutput(true);
+                        }}
+                        sx={{ color: '#cc0000' }}
+                      >
+                        View Results
+                      </Button>
+                      <Button
+                        size="small"
+                        startIcon={<Edit />}
+                        sx={{ color: '#cc0000' }}
+                      >
+                        Edit
+                      </Button>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+                <Button
+                  startIcon={<BarChart />}
+                  sx={{ color: '#cc0000' }}
+                >
+                  View Analysis Progress
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<SaveIcon />}
+                  sx={{ bgcolor: '#cc0000', '&:hover': { bgcolor: '#aa0000' } }}
+                >
+                  Save All Insights
+                </Button>
+              </Box>
+            </Paper>
+          </Grid>
+
+          {/* Final Analysis Actions */}
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2 }}>
+              <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Final Analysis
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Generate recommendations and executive summary based on completed analyses
+                </Typography>
+              </Box>
+
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <Card sx={{ height: '100%' }}>
+                    <CardContent sx={{ textAlign: 'center' }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Generate Recommendations
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" paragraph>
+                        Create targeted recommendations based on analysis insights
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        startIcon={<PlayArrow />}
+                        disabled
+                        sx={{ bgcolor: 'grey.300', color: 'text.secondary' }}
+                      >
+                        Available after 10 analyses
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Card sx={{ height: '100%' }}>
+                    <CardContent sx={{ textAlign: 'center' }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Create Executive Summary
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" paragraph>
+                        Synthesize all analyses into comprehensive summary
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        startIcon={<PlayArrow />}
+                        disabled
+                        sx={{ bgcolor: 'grey.300', color: 'text.secondary' }}
+                      >
+                        Available after recommendations
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+            </Paper>
+          </Grid>
         </Grid>
       </Box>
 

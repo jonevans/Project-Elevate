@@ -28,6 +28,8 @@ import {
   Snackbar,
   Card,
   CardContent,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import {
   CloudUpload,
@@ -47,6 +49,9 @@ import {
   ContentCopy,
   Refresh,
   QuestionAnswer,
+  CloudSync,
+  FolderOpen,
+  Storage,
 } from '@mui/icons-material';
 import { useDropzone } from 'react-dropzone';
 import AssessmentNav from '../components/AssessmentNav';
@@ -74,6 +79,8 @@ const fileTypes = [
 
 const FileUploadWidget = ({ onFileAccepted }) => {
   const [uploadError, setUploadError] = useState('');
+  const [syncError, setSyncError] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
 
   const onDrop = useCallback((acceptedFiles, rejectedFiles) => {
@@ -102,45 +109,112 @@ const FileUploadWidget = ({ onFileAccepted }) => {
     maxSize: MAX_FILE_SIZE
   });
 
+  const handleSync = async () => {
+    setIsSyncing(true);
+    setSyncError('');
+
+    try {
+      // Simulate sync operation - replace with actual API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Handle successful sync
+    } catch (error) {
+      setSyncError('Failed to sync assets. Please try again.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   return (
-    <InfoCard title="Upload Assets" icon={<CloudUpload />}>
-      <Box
-        {...getRootProps()}
-        sx={{
-          border: '2px dashed',
-          borderColor: isDragActive ? '#cc0000' : uploadError ? '#d32f2f' : 'grey.300',
-          borderRadius: 1,
-          p: 3,
-          textAlign: 'center',
-          cursor: 'pointer',
-          backgroundColor: isDragActive ? 'rgba(204, 0, 0, 0.04)' : 'transparent',
-          '&:hover': {
-            borderColor: uploadError ? '#d32f2f' : '#cc0000',
-            backgroundColor: 'rgba(204, 0, 0, 0.04)',
-          },
-        }}
-      >
-        <input {...getInputProps()} />
-        <CloudUpload 
-          sx={{ 
-            fontSize: 48, 
-            color: uploadError ? '#d32f2f' : isDragActive ? '#cc0000' : 'text.secondary',
-            mb: 2 
-          }} 
-        />
-        <Typography 
-          variant="h6" 
-          color={uploadError ? '#d32f2f' : isDragActive ? '#cc0000' : 'text.primary'}
-        >
-          {isDragActive ? 'Drop the file here' : 'Drag and drop a file here'}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          or click to select a file
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          Maximum file size: 10MB
-        </Typography>
-      </Box>
+    <InfoCard title="Asset Management" icon={<CloudUpload />}>
+      <Grid container spacing={3}>
+        {/* Upload Section */}
+        <Grid item xs={12} md={6}>
+          <Box
+            {...getRootProps()}
+            sx={{
+              border: '2px dashed',
+              borderColor: isDragActive ? '#cc0000' : uploadError ? '#d32f2f' : 'grey.300',
+              borderRadius: 1,
+              p: 3,
+              textAlign: 'center',
+              cursor: 'pointer',
+              backgroundColor: isDragActive ? 'rgba(204, 0, 0, 0.04)' : 'transparent',
+              height: '100%',
+              '&:hover': {
+                borderColor: uploadError ? '#d32f2f' : '#cc0000',
+                backgroundColor: 'rgba(204, 0, 0, 0.04)',
+              },
+            }}
+          >
+            <input {...getInputProps()} />
+            <CloudUpload 
+              sx={{ 
+                fontSize: 48, 
+                color: uploadError ? '#d32f2f' : isDragActive ? '#cc0000' : 'text.secondary',
+                mb: 2 
+              }} 
+            />
+            <Typography 
+              variant="h6" 
+              color={uploadError ? '#d32f2f' : isDragActive ? '#cc0000' : 'text.primary'}
+            >
+              {isDragActive ? 'Drop the file here' : 'Drag and drop a file here'}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              or click to select a file
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Maximum file size: 10MB
+            </Typography>
+          </Box>
+        </Grid>
+
+        {/* Sync Section */}
+        <Grid item xs={12} md={6}>
+          <Box
+            sx={{
+              border: '2px dashed',
+              borderColor: 'grey.300',
+              borderRadius: 1,
+              p: 3,
+              textAlign: 'center',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'grey.50',
+            }}
+          >
+            <CloudSync 
+              sx={{ 
+                fontSize: 48, 
+                color: 'text.secondary',
+                mb: 2 
+              }} 
+            />
+            <Typography variant="h6" color="text.primary">
+              Sync from Fileshare
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Automatically sync assets from the configured fileshare
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={isSyncing ? <CircularProgress size={20} /> : <CloudSync />}
+              onClick={handleSync}
+              disabled={isSyncing}
+              sx={{
+                bgcolor: '#cc0000',
+                '&:hover': { bgcolor: '#aa0000' }
+              }}
+            >
+              {isSyncing ? 'Syncing...' : 'Sync Now'}
+            </Button>
+          </Box>
+        </Grid>
+      </Grid>
+
       {uploadError && (
         <Alert 
           severity="error" 
@@ -148,6 +222,16 @@ const FileUploadWidget = ({ onFileAccepted }) => {
           onClose={() => setUploadError('')}
         >
           {uploadError}
+        </Alert>
+      )}
+
+      {syncError && (
+        <Alert 
+          severity="error" 
+          sx={{ mt: 2 }}
+          onClose={() => setSyncError('')}
+        >
+          {syncError}
         </Alert>
       )}
     </InfoCard>

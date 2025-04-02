@@ -39,12 +39,45 @@ import {
   LocalFireDepartment,
   Analytics,
   Assessment,
-  Presentation,
+  CalendarToday,
   Business,
   TrendingDown,
+  ArrowUpward,
+  ArrowDownward,
 } from '@mui/icons-material';
 import AssessmentNav from '../components/AssessmentNav';
-import { LineChart } from '@mui/x-charts/LineChart';
+import { LineChart } from '@mui/x-charts';
+
+// Mock data for assessment stats
+const mockAssessmentStats = [
+  {
+    id: 1,
+    title: 'Active Assessments',
+    count: 1,
+    change: 20,
+    direction: 'up',
+    comparison: 'vs. Last Quarter',
+    icon: <Assessment />,
+  },
+  {
+    id: 2,
+    title: 'Scheduled',
+    count: 1,
+    change: 0,
+    direction: 'neutral',
+    comparison: 'vs. Last Quarter',
+    icon: <CalendarToday />,
+  },
+  {
+    id: 3,
+    title: 'Completed (YTD)',
+    count: 1,
+    change: 10,
+    direction: 'down',
+    comparison: 'vs. Last Year',
+    icon: <CheckCircle />,
+  },
+];
 
 // Mock data for feedback
 const mockFeedback = [
@@ -130,6 +163,63 @@ const mockAchievements = {
       { category: 'Client Satisfaction', streak: 6 },
     ],
   },
+};
+
+// StatCard component for assessment metrics
+const StatCard = ({ stat }) => {
+  return (
+    <Paper sx={{ p: 3, height: '100%', boxShadow: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <Avatar 
+          sx={{ 
+            bgcolor: '#cc0000', 
+            width: 40, 
+            height: 40,
+            '& .MuiSvgIcon-root': {
+              fontSize: 22
+            }
+          }}
+        >
+          {stat.icon}
+        </Avatar>
+        <Typography variant="h6" color="text.secondary" sx={{ ml: 1.5 }}>
+          {stat.title}
+        </Typography>
+      </Box>
+      
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+        <Typography variant="h3" component="div" sx={{ fontWeight: 500 }}>
+          {stat.count}
+        </Typography>
+        {stat.direction !== 'neutral' && (
+          <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
+            {stat.direction === 'up' ? (
+              <ArrowUpward sx={{ color: 'success.main' }} />
+            ) : (
+              <ArrowDownward sx={{ color: 'error.main' }} />
+            )}
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                color: stat.direction === 'up' ? 'success.main' : 'error.main',
+                fontWeight: 500 
+              }}
+            >
+              {stat.change}%
+            </Typography>
+          </Box>
+        )}
+        {stat.direction === 'neutral' && (
+          <Typography variant="body1" sx={{ ml: 2, color: 'text.secondary', fontWeight: 500 }}>
+            No change
+          </Typography>
+        )}
+      </Box>
+      <Typography variant="body2" color="text.secondary">
+        {stat.comparison}
+      </Typography>
+    </Paper>
+  );
 };
 
 const FeedbackCard = ({ feedback }) => {
@@ -259,7 +349,16 @@ const Growth = () => {
     <Box>
       <AssessmentNav customerName={customerName} />
       
-      <Box sx={{ px: 4, pb: 4 }}>
+      <Box>
+        {/* Assessment Stats Cards */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          {mockAssessmentStats.map((stat) => (
+            <Grid item xs={12} md={4} key={stat.id}>
+              <StatCard stat={stat} />
+            </Grid>
+          ))}
+        </Grid>
+        
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
           <Tabs 
             value={activeTab} 

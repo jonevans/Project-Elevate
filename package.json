@@ -1,5 +1,18 @@
 {
-  "dependencies": {
-    "react-dropzone": "^14.3.8"
+  "name": "project-elevate",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "start": "cd client && npm start",
+    "build": "cd client && npm run build",
+    "test": "cd client && npm test",
+    "lint": "cd client && npm run lint"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
   }
 }

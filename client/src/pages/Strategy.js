@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Box,
@@ -34,6 +34,7 @@ import {
   ListItemIcon,
   ListItemText,
   Paper as MuiPaper,
+  CircularProgress,
 } from '@mui/material';
 import LoadingButton from '@mui/lab/LoadingButton';
 import {
@@ -52,6 +53,11 @@ import {
   Delete as DeleteIcon,
   SaveAltOutlined,
   Refresh,
+  Info as InfoIcon,
+  Group as GroupIcon,
+  Send,
+  ChatBubbleOutline,
+  ArticleOutlined,
 } from '@mui/icons-material';
 import AssessmentNav from '../components/AssessmentNav';
 
@@ -215,6 +221,31 @@ const StakeholderCard = ({ stakeholder }) => {
   const [perspectiveModalOpen, setPerspectiveModalOpen] = useState(false);
   const [editedStakeholder, setEditedStakeholder] = useState(stakeholder);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [activeTooltip, setActiveTooltip] = useState(null);
+  const [activeTab, setActiveTab] = useState(0);
+  const tooltipRef = useRef(null);
+  const [chatMessage, setChatMessage] = useState('');
+  const [chatHistory, setChatHistory] = useState([]);
+  const [isSending, setIsSending] = useState(false);
+  const chatContainerRef = useRef(null);
+
+  // Handle clicks outside tooltip to close it
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (tooltipRef.current && !tooltipRef.current.contains(event.target)) {
+        setActiveTooltip(null);
+      }
+    }
+    
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [tooltipRef]);
+
+  const toggleTooltip = (id) => {
+    setActiveTooltip(activeTooltip === id ? null : id);
+  };
 
   const getSentimentColor = (sentiment) => {
     switch (sentiment) {
@@ -289,6 +320,43 @@ const StakeholderCard = ({ stakeholder }) => {
     }, 1500);
   };
 
+  const handleSendMessage = async () => {
+    if (!chatMessage.trim()) return;
+    
+    setIsSending(true);
+    const userMessage = chatMessage.trim();
+    setChatMessage('');
+    
+    // Add user message to chat
+    setChatHistory(prev => [...prev, {
+      type: 'user',
+      message: userMessage,
+      timestamp: new Date()
+    }]);
+
+    // Simulate AI response - Replace with actual AI integration
+    setTimeout(() => {
+      const stakeholderResponse = generateStakeholderResponse(userMessage, stakeholder);
+      setChatHistory(prev => [...prev, {
+        type: 'stakeholder',
+        message: stakeholderResponse,
+        timestamp: new Date()
+      }]);
+      setIsSending(false);
+    }, 1500);
+  };
+
+  const generateStakeholderResponse = (message, stakeholder) => {
+    // This is a placeholder - Replace with actual AI integration
+    return `As ${stakeholder.role}, I need to consider the impact on our technical infrastructure. Let me think about how this aligns with our current priorities.`;
+  };
+
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [chatHistory]);
+
   const mockPerspective = {
     summary: "Based on Sarah Chen's technical background and current priorities, she is likely to approach our assessment findings with a strong focus on technical feasibility and system performance implications. As CTO, her primary concerns will center around the technical architecture decisions and their long-term impact on scalability and security.",
     keyPoints: [
@@ -344,88 +412,219 @@ const StakeholderCard = ({ stakeholder }) => {
               {stakeholder.role}
             </Typography>
           </Box>
-          <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, textAlign: 'right' }}>
+          <Box 
+            onClick={() => setPerspectiveModalOpen(true)}
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center',
+              cursor: 'pointer',
+              '&:hover': {
+                '& .MuiTypography-root': {
+                  color: '#cc0000'
+                }
+              }
+            }}
+          >
+            <Avatar
+              sx={{
+                bgcolor: '#cc0000',
+                width: 32,
+                height: 32,
+                mr: 1,
+                '& .MuiSvgIcon-root': {
+                  fontSize: 18
+                }
+              }}
+            >
+              <VisibilityIcon />
+            </Avatar>
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                color: 'text.primary',
+                transition: 'color 0.2s'
+              }}
+            >
+              View Perspective
+            </Typography>
+          </Box>
+        </Box>
+
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, position: 'relative' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
               Influence Level
             </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              {[...Array(5)].map((_, index) => (
-                <Tooltip 
-                  key={index} 
-                  title={`Influence Level: ${stakeholder.influence}/5`}
-                  arrow
-                  placement="top"
+            <Tooltip
+              title="Influence level indicates decision-making power based on org. structure and peer interviews"
+              arrow
+              placement="right"
+              sx={{ ml: 0.5 }}
+            >
+              <IconButton
+                size="small"
+                sx={{ color: 'rgba(0, 0, 0, 0.3)' }}
+              >
+                <InfoIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+          <Box sx={{ display: 'flex', color: '#cc0000' }}>
+            {[...Array(5)].map((_, index) => (
+              <ArrowUpward
+                key={index}
+                sx={{
+                  fontSize: 24,
+                  color: index < stakeholder.influence ? '#cc0000' : 'rgba(0, 0, 0, 0.12)',
+                  cursor: 'help',
+                }}
+              />
+            ))}
+          </Box>
+        </Box>
+
+        <Box sx={{ mb: 4, position: 'relative' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Stakeholder Type
+              </Typography>
+              <Tooltip
+                title="Functional role in decision-making processes"
+                arrow
+                placement="right"
+                sx={{ ml: 0.5 }}
+              >
+                <IconButton
+                  size="small"
+                  sx={{ color: 'rgba(0, 0, 0, 0.3)' }}
                 >
-                  <ArrowUpward
-                    sx={{
-                      fontSize: 24,
-                      color: index < stakeholder.influence ? '#cc0000' : 'rgba(0, 0, 0, 0.12)',
-                      cursor: 'help',
-                    }}
-                  />
-                </Tooltip>
-              ))}
+                  <InfoIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
             </Box>
-          </Box>
-        </Box>
-
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 1.5 }}>
-            Stakeholder Type
-          </Typography>
-          <Chip 
-            label={stakeholder.type}
-            sx={{ 
-              backgroundColor: 'rgba(204, 0, 0, 0.08)',
-              color: '#cc0000',
-              fontWeight: 500,
-              fontSize: '0.9rem',
-              height: 32,
-            }}
-          />
-        </Box>
-
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 1.5 }}>
-            Sentiment & Change Readiness
-          </Typography>
-          <Box sx={{ 
-            height: '8px', 
-            borderRadius: '4px',
-            bgcolor: 'rgba(0, 0, 0, 0.08)',
-            mb: 2,
-          }}>
-            <Box sx={{ 
-              width: '100%', 
-              height: '100%', 
-              borderRadius: '4px',
-              bgcolor: getSentimentColor(stakeholder.sentiment),
-            }} />
-          </Box>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-              {getSentimentLabel(stakeholder.sentiment)}
-            </Typography>
-            <Chip
-              label={`Readiness: ${stakeholder.changeReadiness}/10`}
-              sx={{
-                bgcolor: stakeholder.changeReadiness >= 7 ? 'rgba(76, 175, 80, 0.1)' :
-                       stakeholder.changeReadiness >= 5 ? 'rgba(255, 152, 0, 0.1)' :
-                       'rgba(244, 67, 54, 0.1)',
-                color: stakeholder.changeReadiness >= 7 ? '#4caf50' :
-                      stakeholder.changeReadiness >= 5 ? '#ff9800' :
-                      '#f44336',
-                height: 28,
-                fontSize: '0.85rem',
+            <Chip 
+              label={stakeholder.type}
+              sx={{ 
+                backgroundColor: 'rgba(204, 0, 0, 0.08)',
+                color: '#cc0000',
+                fontWeight: 500,
+                fontSize: '0.9rem',
+                height: 32,
               }}
             />
           </Box>
         </Box>
 
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 1.5 }}>
-            Key Priorities
-          </Typography>
+        <Box sx={{ mb: 4, position: 'relative' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Sentiment
+              </Typography>
+              <Tooltip
+                title="Emotional attitude toward proposed changes based on interview transcript analysis"
+                arrow
+                placement="right"
+                sx={{ ml: 0.5 }}
+              >
+                <IconButton
+                  size="small"
+                  sx={{ color: 'rgba(0, 0, 0, 0.3)' }}
+                >
+                  <InfoIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+            <Typography variant="body2" color="text.secondary">
+              {getSentimentLabel(stakeholder.sentiment)}
+            </Typography>
+          </Box>
+          <LinearProgress
+            variant="determinate"
+            value={stakeholder.sentiment === 'positive' ? 100 : stakeholder.sentiment === 'neutral' ? 50 : 20}
+            sx={{
+              height: 8,
+              borderRadius: 4,
+              mb: 3,
+              bgcolor: '#e0e0e0',
+              '& .MuiLinearProgress-bar': {
+                borderRadius: 4,
+                background: 'linear-gradient(90deg, #f44336 0%, #fdd835 50%, #4caf50 100%)',
+                backgroundSize: '200% 100%',
+                backgroundPosition: stakeholder.sentiment === 'positive' ? 'right' : 
+                                  stakeholder.sentiment === 'neutral' ? 'center' : 'left',
+                transition: 'all 0.3s ease',
+              },
+            }}
+          />
+
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Change Readiness
+              </Typography>
+              <Tooltip
+                title="Practical ability to implement changes based on resources, capacity, and organizational constraints"
+                arrow
+                placement="right"
+                sx={{ ml: 0.5 }}
+              >
+                <IconButton
+                  size="small"
+                  sx={{ color: 'rgba(0, 0, 0, 0.3)' }}
+                >
+                  <InfoIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+            <Typography variant="body2" sx={{ 
+              color: stakeholder.changeReadiness >= 7 ? '#4caf50' :
+                     stakeholder.changeReadiness >= 5 ? '#ff9800' :
+                     '#f44336',
+              fontWeight: 500,
+            }}>
+              {stakeholder.changeReadiness}/10
+            </Typography>
+          </Box>
+          <LinearProgress
+            variant="determinate"
+            value={stakeholder.changeReadiness * 10}
+            sx={{
+              height: 8,
+              borderRadius: 4,
+              mb: 3,
+              bgcolor: '#e0e0e0',
+              '& .MuiLinearProgress-bar': {
+                borderRadius: 4,
+                background: 'linear-gradient(90deg, #f44336 0%, #fdd835 50%, #4caf50 100%)',
+                backgroundSize: '200% 100%',
+                backgroundPosition: `${100 - (stakeholder.changeReadiness * 10)}% center`,
+                transition: 'all 0.3s ease',
+              },
+            }}
+          />
+        </Box>
+
+        <Box sx={{ mb: 4, position: 'relative' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              Key Priorities
+            </Typography>
+            <Tooltip
+              title="Primary concerns and focus areas for this stakeholder"
+              arrow
+              placement="right"
+              sx={{ ml: 0.5 }}
+            >
+              <IconButton
+                size="small"
+                sx={{ color: 'rgba(0, 0, 0, 0.3)' }}
+              >
+                <InfoIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
             {stakeholder.priorities.map((priority, index) => (
               <Chip 
@@ -443,10 +642,25 @@ const StakeholderCard = ({ stakeholder }) => {
           </Stack>
         </Box>
 
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 1.5 }}>
-            Decision Authority
-          </Typography>
+        <Box sx={{ mb: 4, position: 'relative' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              Decision Authority
+            </Typography>
+            <Tooltip
+              title="Areas where this stakeholder has final approval power, determined through interviews and organizational analysis"
+              arrow
+              placement="right"
+              sx={{ ml: 0.5 }}
+            >
+              <IconButton
+                size="small"
+                sx={{ color: 'rgba(0, 0, 0, 0.3)' }}
+              >
+                <InfoIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
             {stakeholder.decisionAuthority.map((authority, index) => (
               <Chip
@@ -463,23 +677,41 @@ const StakeholderCard = ({ stakeholder }) => {
           </Stack>
         </Box>
 
-        <Box sx={{ mb: 2 }}>
-          <Button
-            size="large"
-            onClick={() => setShowObjections(!showObjections)}
-            endIcon={showObjections ? <ArrowUpward /> : <ArrowDownward />}
+        <Box sx={{ mb: 4, position: 'relative' }}>
+          <Box 
             sx={{ 
-              color: 'text.secondary',
-              p: 0,
-              fontSize: '1rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              fontWeight: 500,
-              '&:hover': { bgcolor: 'transparent', color: '#cc0000' },
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              mb: 1
             }}
+            onClick={() => setShowObjections(!showObjections)}
           >
-            Anticipated Objections
-          </Button>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                ANTICIPATED OBJECTIONS
+              </Typography>
+              <Tooltip
+                title="Likely concerns based on previous projects, stakeholder interviews, and organizational history"
+                arrow
+                placement="right"
+                sx={{ ml: 0.5 }}
+              >
+                <IconButton
+                  size="small"
+                  sx={{ color: 'rgba(0, 0, 0, 0.3)' }}
+                >
+                  <InfoIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+            {showObjections ? 
+              <ArrowUpward sx={{ color: 'text.secondary' }} /> : 
+              <ArrowDownward sx={{ color: 'text.secondary' }} />
+            }
+          </Box>
+          
           <Collapse in={showObjections}>
             <Stack spacing={1.5} sx={{ mt: 2 }}>
               {stakeholder.anticipatedObjections.map((objection, index) => (
@@ -515,17 +747,14 @@ const StakeholderCard = ({ stakeholder }) => {
           </Collapse>
         </Box>
 
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 'auto', pt: 2 }}>
-          <Tooltip title="Edit Persona">
-            <IconButton size="medium" sx={{ mr: 1 }} onClick={handleEditOpen}>
-              <EditIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="View Perspective">
-            <IconButton size="medium" sx={{ color: '#cc0000' }} onClick={handlePerspectiveOpen}>
-              <VisibilityIcon />
-            </IconButton>
-          </Tooltip>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
+          <IconButton 
+            size="medium" 
+            onClick={() => setEditModalOpen(true)}
+            sx={{ color: 'text.secondary' }}
+          >
+            <EditIcon />
+          </IconButton>
         </Box>
       </Card>
 
@@ -804,152 +1033,305 @@ const StakeholderCard = ({ stakeholder }) => {
           }
         }}
       >
-        <DialogTitle sx={{ 
-          borderBottom: 1, 
-          borderColor: 'divider',
-          px: 4,
-          py: 3,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2,
-        }}>
-          <Avatar 
-            sx={{ 
-              bgcolor: '#cc0000',
-              width: 40,
-              height: 40,
-            }}
-          >
-            {stakeholder.name.split(' ').map(n => n[0]).join('')}
-          </Avatar>
-          <Box>
-            <Typography variant="h5" sx={{ fontWeight: 500 }}>
-              {stakeholder.name}
-            </Typography>
-            <Typography variant="subtitle1" color="text.secondary">
-              Perspective Analysis
-            </Typography>
-          </Box>
-        </DialogTitle>
-        <DialogContent sx={{ p: 4 }}>
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h6" gutterBottom>
-              Summary
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              {mockPerspective.summary}
-            </Typography>
-          </Box>
-
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h6" gutterBottom>
-              Key Points
-            </Typography>
-            <List>
-              {mockPerspective.keyPoints.map((point, index) => (
-                <ListItem key={index} sx={{ py: 0.5 }}>
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <ArrowUpward sx={{ color: '#cc0000', fontSize: 20 }} />
-                  </ListItemIcon>
-                  <ListItemText primary={point} />
-                </ListItem>
-              ))}
-            </List>
-          </Box>
-
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} md={6}>
-              <Typography variant="h6" gutterBottom>
-                Positive Alignment
-              </Typography>
-              <Stack spacing={1} alignItems="flex-start">
-                {mockPerspective.recommendationAlignment.positive.map((item, index) => (
-                  <Chip
-                    key={index}
-                    label={item}
-                    icon={<CheckCircle />}
-                    sx={{
-                      bgcolor: 'rgba(76, 175, 80, 0.08)',
-                      color: '#4caf50',
-                      '& .MuiChip-icon': { color: '#4caf50' },
-                      maxWidth: '100%',
-                      height: 'auto',
-                      '& .MuiChip-label': {
-                        whiteSpace: 'normal',
-                        display: 'block',
-                        py: 0.5,
-                      },
-                    }}
-                  />
-                ))}
-              </Stack>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <Typography variant="h6" gutterBottom>
-                Potential Concerns
-              </Typography>
-              <Stack spacing={1} alignItems="flex-start">
-                {mockPerspective.recommendationAlignment.concerns.map((item, index) => (
-                  <Chip
-                    key={index}
-                    label={item}
-                    icon={<Warning />}
-                    sx={{
-                      bgcolor: 'rgba(244, 67, 54, 0.08)',
-                      color: '#f44336',
-                      '& .MuiChip-icon': { color: '#f44336' },
-                      maxWidth: '100%',
-                      height: 'auto',
-                      '& .MuiChip-label': {
-                        whiteSpace: 'normal',
-                        display: 'block',
-                        py: 0.5,
-                      },
-                    }}
-                  />
-                ))}
-              </Stack>
-            </Grid>
-          </Grid>
-
-          <Box>
-            <Typography variant="h6" gutterBottom>
-              Suggested Approach
-            </Typography>
-            <Paper 
-              variant="outlined" 
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+            <Avatar 
               sx={{ 
-                p: 2,
-                bgcolor: 'rgba(25, 118, 210, 0.08)',
-                borderColor: 'rgba(25, 118, 210, 0.2)',
+                bgcolor: '#cc0000', 
+                mr: 2,
+                width: 40,
+                height: 40,
+                '& .MuiSvgIcon-root': {
+                  fontSize: 20
+                }
               }}
             >
-              <Typography variant="body1" color="primary">
-                {mockPerspective.suggestedApproach}
+              {stakeholder.name.charAt(0)}
+            </Avatar>
+            <Box>
+              <Typography variant="h6" component="div">
+                {stakeholder.name}
               </Typography>
-            </Paper>
+              <Typography variant="subtitle2" color="text.secondary">
+                Perspective Analysis
+              </Typography>
+            </Box>
           </Box>
+        </DialogTitle>
+
+        <DialogContent sx={{ px: 3 }}>
+          <Tabs 
+            value={activeTab} 
+            onChange={(e, newValue) => setActiveTab(newValue)}
+            sx={{ 
+              mb: 3, 
+              borderBottom: 1, 
+              borderColor: 'divider',
+              '& .MuiTab-root': {
+                color: 'text.secondary',
+                '&.Mui-selected': {
+                  color: '#cc0000',
+                },
+                '& .MuiSvgIcon-root': {
+                  fontSize: 20,
+                  marginRight: 1,
+                },
+              },
+              '& .MuiTabs-indicator': {
+                backgroundColor: '#cc0000',
+              },
+            }}
+          >
+            <Tab 
+              label="Analysis" 
+              icon={<ArticleOutlined />} 
+              iconPosition="start"
+              sx={{ minHeight: 48 }}
+            />
+            <Tab 
+              label="Chat" 
+              icon={<ChatBubbleOutline />} 
+              iconPosition="start"
+              sx={{ minHeight: 48 }}
+            />
+          </Tabs>
+
+          {activeTab === 0 ? (
+            // Existing analysis content
+            <Box>
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h6" gutterBottom>
+                  Summary
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  {mockPerspective.summary}
+                </Typography>
+              </Box>
+
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h6" gutterBottom>
+                  Key Points
+                </Typography>
+                <List>
+                  {mockPerspective.keyPoints.map((point, index) => (
+                    <ListItem key={index} sx={{ py: 0.5 }}>
+                      <ListItemIcon sx={{ minWidth: 36 }}>
+                        <ArrowUpward sx={{ color: '#cc0000', fontSize: 20 }} />
+                      </ListItemIcon>
+                      <ListItemText primary={point} />
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
+
+              <Grid container spacing={3} sx={{ mb: 4 }}>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="h6" gutterBottom>
+                    Positive Alignment
+                  </Typography>
+                  <Stack spacing={1} alignItems="flex-start">
+                    {mockPerspective.recommendationAlignment.positive.map((item, index) => (
+                      <Chip
+                        key={index}
+                        label={item}
+                        icon={<CheckCircle />}
+                        sx={{
+                          bgcolor: 'rgba(76, 175, 80, 0.08)',
+                          color: '#4caf50',
+                          '& .MuiChip-icon': { color: '#4caf50' },
+                          maxWidth: '100%',
+                          height: 'auto',
+                          '& .MuiChip-label': {
+                            whiteSpace: 'normal',
+                            display: 'block',
+                            py: 0.5,
+                          },
+                        }}
+                      />
+                    ))}
+                  </Stack>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="h6" gutterBottom>
+                    Potential Concerns
+                  </Typography>
+                  <Stack spacing={1} alignItems="flex-start">
+                    {mockPerspective.recommendationAlignment.concerns.map((item, index) => (
+                      <Chip
+                        key={index}
+                        label={item}
+                        icon={<Warning />}
+                        sx={{
+                          bgcolor: 'rgba(244, 67, 54, 0.08)',
+                          color: '#f44336',
+                          '& .MuiChip-icon': { color: '#f44336' },
+                          maxWidth: '100%',
+                          height: 'auto',
+                          '& .MuiChip-label': {
+                            whiteSpace: 'normal',
+                            display: 'block',
+                            py: 0.5,
+                          },
+                        }}
+                      />
+                    ))}
+                  </Stack>
+                </Grid>
+              </Grid>
+
+              <Box>
+                <Typography variant="h6" gutterBottom>
+                  Suggested Approach
+                </Typography>
+                <Paper 
+                  variant="outlined" 
+                  sx={{ 
+                    p: 2,
+                    bgcolor: 'rgba(25, 118, 210, 0.08)',
+                    borderColor: 'rgba(25, 118, 210, 0.2)',
+                  }}
+                >
+                  <Typography variant="body1" color="primary">
+                    {mockPerspective.suggestedApproach}
+                  </Typography>
+                </Paper>
+              </Box>
+            </Box>
+          ) : (
+            // New chat interface
+            <Box sx={{ height: '60vh', display: 'flex', flexDirection: 'column' }}>
+              <Box 
+                ref={chatContainerRef}
+                sx={{ 
+                  flex: 1,
+                  overflowY: 'auto',
+                  mb: 2,
+                  p: 2,
+                  bgcolor: 'rgba(204, 0, 0, 0.02)',
+                  borderRadius: 1
+                }}
+              >
+                {chatHistory.map((chat, index) => (
+                  <Box
+                    key={index}
+                    sx={{
+                      display: 'flex',
+                      justifyContent: chat.type === 'user' ? 'flex-end' : 'flex-start',
+                      mb: 2
+                    }}
+                  >
+                    {chat.type === 'stakeholder' && (
+                      <Avatar 
+                        sx={{ 
+                          bgcolor: '#cc0000', 
+                          width: 32, 
+                          height: 32, 
+                          mr: 1 
+                        }}
+                      >
+                        {stakeholder.name.charAt(0)}
+                      </Avatar>
+                    )}
+                    <Paper
+                      sx={{
+                        maxWidth: '70%',
+                        p: 2,
+                        bgcolor: chat.type === 'user' ? 'rgba(204, 0, 0, 0.08)' : 'white',
+                        color: chat.type === 'user' ? '#cc0000' : 'text.primary',
+                        borderRadius: 2,
+                        boxShadow: 1,
+                        border: chat.type === 'user' ? '1px solid rgba(204, 0, 0, 0.2)' : '1px solid rgba(0, 0, 0, 0.12)'
+                      }}
+                    >
+                      <Typography variant="body1">
+                        {chat.message}
+                      </Typography>
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          display: 'block',
+                          mt: 0.5,
+                          color: chat.type === 'user' ? 'rgba(204, 0, 0, 0.7)' : 'text.secondary'
+                        }}
+                      >
+                        {new Date(chat.timestamp).toLocaleTimeString()}
+                      </Typography>
+                    </Paper>
+                  </Box>
+                ))}
+                {isSending && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}>
+                    <Avatar 
+                      sx={{ 
+                        bgcolor: '#cc0000', 
+                        width: 32, 
+                        height: 32, 
+                        mr: 1 
+                      }}
+                    >
+                      {stakeholder.name.charAt(0)}
+                    </Avatar>
+                    <CircularProgress size={20} sx={{ color: '#cc0000' }} />
+                  </Box>
+                )}
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  placeholder="Ask a question..."
+                  value={chatMessage}
+                  onChange={(e) => setChatMessage(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  disabled={isSending}
+                  multiline
+                  maxRows={3}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'rgba(204, 0, 0, 0.5)',
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#cc0000',
+                      },
+                    }
+                  }}
+                />
+                <IconButton 
+                  onClick={handleSendMessage}
+                  disabled={!chatMessage.trim() || isSending}
+                  sx={{ 
+                    bgcolor: '#cc0000',
+                    color: 'white',
+                    '&:hover': {
+                      bgcolor: '#aa0000'
+                    },
+                    '&.Mui-disabled': {
+                      bgcolor: 'rgba(204, 0, 0, 0.3)',
+                      color: 'white'
+                    }
+                  }}
+                >
+                  <Send />
+                </IconButton>
+              </Box>
+            </Box>
+          )}
         </DialogContent>
-        <DialogActions 
-          sx={{ 
-            p: 3, 
-            borderTop: 1, 
-            borderColor: 'divider',
-            bgcolor: 'grey.50',
-            gap: 2
-          }}
-        >
+
+        <DialogActions sx={{ p: 3, borderTop: 1, borderColor: 'divider', bgcolor: 'grey.50', gap: 2 }}>
           <Box sx={{ flex: 1 }}>
-            <Button
-              variant="outlined"
+            <Button 
               startIcon={<SaveAltOutlined />}
               sx={{ 
-                borderColor: '#cc0000',
                 color: '#cc0000',
-                '&:hover': { 
-                  borderColor: '#aa0000',
-                  bgcolor: 'rgba(204, 0, 0, 0.04)' 
-                },
+                '&:hover': { bgcolor: 'rgba(204, 0, 0, 0.04)' },
               }}
             >
               Save to Assets
@@ -964,19 +1346,22 @@ const StakeholderCard = ({ stakeholder }) => {
           >
             Close
           </Button>
-          <LoadingButton
-            onClick={handleRegenerateClick}
-            loading={isGenerating}
-            loadingPosition="start"
-            startIcon={<Refresh />}
-            variant="contained"
-            sx={{ 
-              bgcolor: '#cc0000',
-              '&:hover': { bgcolor: '#aa0000' }
-            }}
-          >
-            Regenerate
-          </LoadingButton>
+          {activeTab === 0 && (
+            <LoadingButton
+              onClick={handleRegenerateClick}
+              loading={isGenerating}
+              startIcon={<Refresh />}
+              variant="contained"
+              sx={{
+                bgcolor: '#cc0000',
+                '&:hover': {
+                  bgcolor: '#aa0000'
+                }
+              }}
+            >
+              Regenerate
+            </LoadingButton>
+          )}
         </DialogActions>
       </Dialog>
     </>
@@ -1111,7 +1496,7 @@ const Strategy = () => {
     <Box>
       <AssessmentNav customerName={customerName} />
       
-      <Box sx={{ px: 4, pb: 4 }}>
+      <Box>
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
           <Tabs 
             value={activeTab} 
